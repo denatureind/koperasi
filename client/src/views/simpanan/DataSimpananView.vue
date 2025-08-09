@@ -13,17 +13,20 @@
       <tbody>
         <tr v-for="rek in rekeningList" :key="rek.id">
           <td>
-            <router-link :to="`/rekening/${rek.id}`">{{
-              rek.no_rekening
-            }}</router-link>
+            <router-link :to="`/rekening/${rek.id}`">
+              {{ rek.no_rekening }}
+            </router-link>
           </td>
           <td>
-            <router-link :to="`/anggota/${rek.anggota_id}`">{{
-              rek.nama_anggota
-            }}</router-link>
+            <router-link :to="`/anggota/${rek.anggota_id}`">
+              {{ rek.nama_anggota }}
+            </router-link>
           </td>
           <td>{{ rek.jenis_simpanan }}</td>
           <td class="text-right">{{ formatUang(rek.saldo) }}</td>
+        </tr>
+        <tr v-if="rekeningList.length === 0">
+          <td colspan="4" style="text-align: center">Tidak ada data</td>
         </tr>
       </tbody>
     </table>
@@ -36,8 +39,19 @@ import SimpananService from "@/services/simpanan.service.js";
 
 const rekeningList = ref([]);
 
+// Fungsi format rupiah
+const formatUang = (angka) => {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+  }).format(angka);
+};
+
+// Fungsi ambil data dari API
 const fetchAllRekening = async () => {
   try {
+    console.log("Memanggil API getAllRekening...");
+    console.log(SimpananService); // Debug: Pastikan ini objek, bukan undefined
     const response = await SimpananService.getAllRekening();
     rekeningList.value = response.data;
   } catch (error) {
@@ -45,15 +59,10 @@ const fetchAllRekening = async () => {
   }
 };
 
-const formatUang = (angka) =>
-  new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(
-    angka
-  );
-
 onMounted(fetchAllRekening);
 </script>
+
 <style scoped>
-/* Style standar untuk tabel */
 table {
   width: 100%;
   border-collapse: collapse;

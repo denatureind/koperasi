@@ -1,35 +1,32 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/pinjaman";
+const API_URL = "http://localhost:5000/api/simpanan";
 
-export default {
-  // Mengambil SEMUA pinjaman
-  getAll() {
-    return axios.get(API_URL);
+const SimpananService = {
+  getAllRekening() {
+    return axios.get(`${API_URL}/rekening`);
   },
-
-  // FUNGSI YANG SEHARUSNYA ADA
   getAllTransaksi() {
     return axios.get(`${API_URL}/transaksi`);
   },
-
-  // Membuat pinjaman baru
-  create(data) {
-    return axios.post(API_URL, data);
+  getRekeningByAnggotaId(anggotaId) {
+    return axios.get(`${API_URL}/rekening/anggota/${anggotaId}`);
   },
-
-  // Mengambil pinjaman milik satu anggota
-  getByAnggotaId(anggotaId) {
-    return axios.get(`${API_URL}/anggota/${anggotaId}`);
+  getRekeningById(id) {
+    return axios.get(`${API_URL}/rekening/${id}`);
   },
-
-  // Mengambil detail satu pinjaman
-  getById(id) {
-    return axios.get(`${API_URL}/${id}`);
+  getMutasiByRekeningId(rekeningId) {
+    return axios.get(`${API_URL}/rekening/${rekeningId}/mutasi`);
   },
-
-  // Membayar angsuran
-  bayarAngsuran(jadwalId, data) {
-    return axios.post(`${API_URL}/bayar/${jadwalId}`, data);
+  createRekening(data) {
+    return axios.post(`${API_URL}/rekening`, data);
+  },
+  createSetoran(rekeningId, data) {
+    return axios.post(`${API_URL}/rekening/${rekeningId}/setor`, data);
+  },
+  createPenarikan(rekeningId, data) {
+    return axios.post(`${API_URL}/rekening/${rekeningId}/tarik`, data);
   },
 };
+
+export default SimpananService;
