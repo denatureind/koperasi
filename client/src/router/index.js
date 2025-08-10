@@ -1,17 +1,14 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/stores/auth.store.js";
 
-// Layouts (sebaiknya tetap diimpor secara statis jika sering digunakan)
+// Layouts
 import DataMasterLayout from "@/views/datamaster/DataMasterLayout.vue";
 import SimpananLayout from "@/views/simpanan/SimpananLayout.vue";
 import PinjamanLayout from "@/views/pinjaman/PinjamanLayout.vue";
 import PembukuanLayout from "@/views/akuntansi/PembukuanLayout.vue";
 import LaporanLayout from "@/views/laporan/LaporanLayout.vue";
-import SHUView from "@/views/laporan/SHUView.vue"; // <-- IMPORT BARU
-import KonfigurasiSHUView from "@/views/pembukuan/KonfigurasiSHUView.vue";
 
 const routes = [
-  // Rute utama tanpa layout
   { path: "/", name: "home", component: () => import("@/views/HomeView.vue") },
   {
     path: "/login",
@@ -19,12 +16,11 @@ const routes = [
     component: () => import("@/views/auth/LoginView.vue"),
   },
 
-  // Rute grup untuk Data Master
   {
     path: "/data-master",
-    component: DataMasterLayout, // Layout diimpor secara statis
+    component: DataMasterLayout,
     children: [
-      { path: "", redirect: "/data-master/anggota" },
+      { path: "", redirect: { name: "anggota-list" } },
       {
         path: "anggota",
         name: "anggota-list",
@@ -35,6 +31,7 @@ const routes = [
         name: "anggota-tambah",
         component: () => import("@/views/anggota/AnggotaForm.vue"),
       },
+      // --- URUTAN PENTING: 'edit' sebelum ':id' ---
       {
         path: "anggota/edit/:id",
         name: "anggota-edit",
@@ -45,29 +42,17 @@ const routes = [
         name: "anggota-detail",
         component: () => import("@/views/anggota/AnggotaDetail.vue"),
       },
-      {
-        path: "anggota/:anggotaId/pinjaman/tambah",
-        name: "pinjaman-tambah",
-        component: () => import("@/views/pinjaman/PinjamanForm.vue"),
-      },
     ],
   },
-
-  // Rute grup untuk Simpanan
   {
     path: "/simpanan",
     component: SimpananLayout,
     children: [
-      { path: "", redirect: "/simpanan/rekening" },
+      { path: "", redirect: { name: "data-simpanan" } },
       {
         path: "rekening",
         name: "data-simpanan",
         component: () => import("@/views/simpanan/DataSimpananView.vue"),
-      },
-      {
-        path: "rekening/:id",
-        name: "rekening-detail",
-        component: () => import("@/views/simpanan/RekeningDetail.vue"),
       },
       {
         path: "transaksi",
@@ -76,22 +61,15 @@ const routes = [
       },
     ],
   },
-
-  // Rute grup untuk Pinjaman
   {
     path: "/pinjaman",
     component: PinjamanLayout,
     children: [
-      { path: "", redirect: "/pinjaman/data" },
+      { path: "", redirect: { name: "data-pinjaman" } },
       {
         path: "data",
         name: "data-pinjaman",
         component: () => import("@/views/pinjaman/DataPinjamanView.vue"),
-      },
-      {
-        path: "data/:id",
-        name: "pinjaman-detail",
-        component: () => import("@/views/pinjaman/PinjamanDetail.vue"),
       },
       {
         path: "transaksi",
@@ -100,13 +78,11 @@ const routes = [
       },
     ],
   },
-
-  // Rute grup untuk Pembukuan
   {
     path: "/pembukuan",
     component: PembukuanLayout,
     children: [
-      { path: "", redirect: "/pembukuan/kode-akun" },
+      { path: "", redirect: { name: "kode-akun" } },
       {
         path: "kode-akun",
         name: "kode-akun",
@@ -117,38 +93,36 @@ const routes = [
         name: "jurnal-umum",
         component: () => import("@/views/akuntansi/JurnalUmumView.vue"),
       },
-
       {
         path: "konfigurasi-shu",
         name: "konfigurasi-shu",
-        component: KonfigurasiSHUView,
+        component: () => import("@/views/pembukuan/KonfigurasiSHUView.vue"),
       },
     ],
   },
-
-  // Rute grup untuk Laporan
   {
     path: "/laporan",
     component: LaporanLayout,
     children: [
-      { path: "", redirect: "/laporan/neraca" },
+      { path: "", redirect: { name: "laporan-neraca" } },
       {
         path: "neraca",
         name: "laporan-neraca",
         component: () => import("@/views/laporan/NeracaView.vue"),
       },
-      // --- ROUTE BARU ---
       {
         path: "laba-rugi",
         name: "laporan-laba-rugi",
         component: () => import("@/views/laporan/LabaRugiView.vue"),
       },
-
-      { path: "shu", name: "laporan-shu", component: SHUView }, // <-- ROUTE BARU
+      {
+        path: "shu",
+        name: "laporan-shu",
+        component: () => import("@/views/laporan/SHUView.vue"),
+      },
     ],
   },
-
-  // Rute-rute detail yang tidak masuk ke layout induk
+  // Rute-rute detail yang tidak memiliki layout induk (jika ada)
   {
     path: "/rekening/:id",
     name: "rekening-detail",

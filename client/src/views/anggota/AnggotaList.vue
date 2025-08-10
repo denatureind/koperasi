@@ -1,6 +1,5 @@
 <template>
   <div class="anggota-list">
-    <h1>Daftar Anggota Koperasi</h1>
     <router-link to="/data-master/anggota/tambah">
       <button class="tambah-btn">Tambah Anggota Baru</button>
     </router-link>
@@ -26,7 +25,7 @@
           <td>{{ new Date(item.tgl_masuk).toLocaleDateString("id-ID") }}</td>
           <td>{{ item.status }}</td>
           <td>
-            <router-link :to="`/anggota/edit/${item.id}`">
+            <router-link :to="`/data-master/anggota/edit/${item.id}`">
               <button class="edit-btn">Edit</button>
             </router-link>
             <button @click="deleteAnggota(item.id)" class="hapus-btn">
@@ -41,31 +40,31 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
-import axios from "axios";
+import AnggotaService from "@/services/anggota.service.js";
+import { useToast } from "vue-toastification";
 
 const anggota = ref([]);
+const toast = useToast();
 
 const fetchAnggota = async () => {
   try {
-    const response = await axios.get("http://localhost:5000/api/anggota");
+    const response = await AnggotaService.getAll();
     anggota.value = response.data;
   } catch (error) {
     console.error("Error saat mengambil data anggota:", error);
+    toast.error("Gagal memuat data anggota.");
   }
 };
 
-// --- FUNGSI BARU UNTUK MENGHAPUS ANGGOTA ---
 const deleteAnggota = async (id) => {
-  // Konfirmasi sebelum menghapus
   if (confirm("Apakah Anda yakin ingin menghapus anggota ini?")) {
     try {
-      await axios.delete(`http://localhost:5000/api/anggota/${id}`);
-      alert("Anggota berhasil dihapus.");
-      // Muat ulang daftar anggota setelah berhasil menghapus
-      fetchAnggota();
+      await AnggotaService.delete(id);
+      toast.success("Anggota berhasil dihapus.");
+      fetchAnggota(); // Muat ulang daftar anggota
     } catch (error) {
+      toast.error(error.response?.data?.message || "Gagal menghapus anggota.");
       console.error("Error saat menghapus anggota:", error);
-      alert("Gagal menghapus anggota.");
     }
   }
 };
@@ -76,7 +75,23 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* ... style lama ... */
+.anggota-list {
+  padding: 20px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+th,
+td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+th {
+  background-color: #f2f2f2;
+}
 .tambah-btn,
 .edit-btn,
 .hapus-btn {

@@ -20,76 +20,84 @@
           id="tgl_masuk"
           v-model="formData.tgl_masuk"
           :disabled="isEditMode"
+          required
         />
       </div>
-      <button type="submit">Simpan Perubahan</button>
+      <button type="submit">
+        {{ isEditMode ? "Simpan Perubahan" : "Simpan Anggota" }}
+      </button>
     </form>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from "vue";
-import { useRouter, useRoute } from "vue-router";
-import axios from "axios";
+import { useRouter, useRoute } from "vue-router"; // 'useRouter' sekarang akan digunakan
+import AnggotaService from "@/services/anggota.service.js";
+import { useToast } from "vue-toastification";
 
 const formData = ref({
   nama: "",
   tgl_masuk: "",
-  status: "aktif", // Default status
+  status: "aktif",
 });
 
-const router = useRouter();
-const route = useRoute(); // Untuk mengakses parameter URL
+const router = useRouter(); // Ini yang akan digunakan
+const route = useRoute();
+const toast = useToast();
+
+// --- DEBUG #1: Cek apakah ID dari URL terbaca ---
 const memberId = route.params.id;
+console.log("ID Anggota dari URL:", memberId);
+// ---------------------------------------------
 
-// Mengecek apakah kita dalam mode 'edit'
 const isEditMode = computed(() => !!memberId);
+console.log("Apakah ini mode Edit?", isEditMode.value);
 
-// Fungsi yang dijalankan saat form disubmit
+// --- FUNGSI HANDLE SUBMIT YANG LENGKAP ---
 const handleSubmit = async () => {
   try {
     if (isEditMode.value) {
-      // Jika mode edit, kirim PUT request
       const dataToUpdate = {
         nama: formData.value.nama,
         status: formData.value.status,
       };
-      await axios.put(
-        `http://localhost:5000/api/anggota/${memberId}`,
-        dataToUpdate
-      );
-      alert("Data anggota berhasil diperbarui!");
+      await AnggotaService.update(memberId, dataToUpdate);
+      toast.success("Data anggota berhasil diperbarui!");
     } else {
-      // Jika mode tambah, kirim POST request
-      await axios.post("http://localhost:5000/api/anggota", formData.value);
-      alert("Anggota baru berhasil ditambahkan!");
+      await AnggotaService.create(formData.value);
+      toast.success("Anggota baru berhasil ditambahkan!");
     }
-    router.push("/data-master/anggota");
+    router.push("/data-master/anggota"); // 'router' digunakan di sini
   } catch (error) {
     console.error("Error saat menyimpan data:", error);
-    alert("Gagal menyimpan data.");
+    toast.error("Gagal menyimpan data.");
   }
 };
+// ---------------------------------------
 
-// Jika dalam mode edit, ambil data anggota saat komponen dimuat
 onMounted(async () => {
   if (isEditMode.value) {
+    console.log("Mode Edit terdeteksi, mencoba mengambil data...");
     try {
-      const response = await axios.get(
-        `http://localhost:5000/api/anggota/${memberId}`
-      );
-      // Format tanggal agar sesuai dengan input type="date"
+      const response = await AnggotaService.getById(memberId);
+
+      // --- DEBUG #2: Cek data yang diterima dari API ---
+      console.log("Data diterima dari API:", response.data);
+      // -----------------------------------------------
+
       response.data.tgl_masuk = response.data.tgl_masuk.split("T")[0];
       formData.value = response.data;
     } catch (error) {
       console.error("Gagal mengambil data anggota untuk diedit:", error);
+      toast.error("Gagal memuat data untuk diedit.");
     }
   }
 });
 </script>
 
 <style scoped>
-/* Style sama seperti sebelumnya, tidak perlu diubah */
+/* Style standar untuk form */
 .anggota-form {
   max-width: 500px;
   margin: 20px auto;
