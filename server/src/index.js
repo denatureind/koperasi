@@ -31,6 +31,12 @@ import akunRoutes from './routes/akunRoutes.js';
 import laporanRoutes from './routes/laporanRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import konfigurasiRoutes from './routes/konfigurasiRoutes.js'; // <-- IMPORT BARU
+import jenisSimpananRoutes from './routes/jenisSimpananRoutes.js';
+import importRoutes from './routes/importRoutes.js';
+import jenisPinjamanRoutes from './routes/jenisPinjamanRoutes.js';
+import periodeRoutes from './routes/periodeRoutes.js';
+
+
 
 // Inisialisasi aplikasi express
 const app = express();
@@ -52,6 +58,11 @@ app.use('/api/akun', akunRoutes);
 app.use('/api/laporan', laporanRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/konfigurasi', konfigurasiRoutes); // <-- GUNAKAN ROUTE BARU
+app.use('/api/jenis-simpanan', jenisSimpananRoutes);
+app.use('/api/import', importRoutes);
+app.use('/api/jenis-pinjaman', jenisPinjamanRoutes);
+app.use('/api/periode', periodeRoutes);
+
 
 // Mendefinisikan PORT dari file .env
 const PORT = process.env.PORT || 5000;

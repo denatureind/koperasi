@@ -1,22 +1,22 @@
 import express from 'express';
-import { 
-  createRekening, 
+import {
+  createRekening,
   createSetoran,
   getRekeningByAnggotaId,
   getMutasiByRekeningId,
   createPenarikan,
   getRekeningById,
-  getAllRekening,
-  getAllTransaksi // <-- PASTIKAN FUNGSI INI DIIMPOR
+  getSimpananSummary,
+  getAllTransaksi
 } from '../controllers/simpananController.js';
 
 const router = express.Router();
 
-// GET /api/simpanan/rekening -> Mengambil SEMUA rekening
-router.get('/rekening', getAllRekening);
+// GET /api/simpanan/rekening -> Mengambil ringkasan & detail
+router.get('/rekening', getSimpananSummary);
 
 // GET /api/simpanan/transaksi -> Mengambil SEMUA transaksi
-router.get('/transaksi', getAllTransaksi); 
+router.get('/transaksi', getAllTransaksi);
 
 // --- ROUTE GET LAINNYA ---
 router.get('/rekening/anggota/:anggotaId', getRekeningByAnggotaId);

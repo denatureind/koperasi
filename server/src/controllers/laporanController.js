@@ -1,25 +1,27 @@
 import db from '../config/db.js';
 
-// Fungsi untuk mengambil data Jurnal Umum
+// FUNGSI PENTING: Mengambil daftar periode untuk dropdown
+export const getPeriodeList = async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM periode_akuntansi ORDER BY tgl_mulai DESC;');
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error saat mengambil daftar periode:', error);
+    res.status(500).json({ message: 'Gagal mengambil daftar periode' });
+  }
+};
+
+// Mengambil Jurnal Umum berdasarkan periode
 export const getJurnalUmum = async (req, res) => {
+  const { periode_id } = req.query;
+  if (!periode_id) return res.status(400).json({ message: 'ID Periode dibutuhkan' });
   try {
     const query = `
-      SELECT 
-        j.id, 
-        j.tgl_transaksi, 
-        j.keterangan, 
-        j.debit, 
-        j.kredit, 
-        k.kode AS kode_akun, 
-        k.nama_akun 
-      FROM 
-        jurnal_umum j
-      JOIN 
-        kode_akun k ON j.akun_id = k.id
-      ORDER BY 
-        j.tgl_transaksi DESC, j.id DESC;
+      SELECT j.id, j.tgl_transaksi, j.keterangan, j.debit, j.kredit, k.kode AS kode_akun, k.nama_akun 
+      FROM jurnal_umum j JOIN kode_akun k ON j.akun_id = k.id
+      WHERE j.periode_id = $1 ORDER BY j.tgl_transaksi DESC, j.id DESC;
     `;
-    const result = await db.query(query);
+    const result = await db.query(query, [periode_id]);
     res.status(200).json(result.rows);
   } catch (error) {
     console.error('Error saat mengambil jurnal umum:', error);
@@ -29,7 +31,11 @@ export const getJurnalUmum = async (req, res) => {
 
 // Fungsi untuk membuat laporan Neraca
 export const getNeraca = async (req, res) => {
-  const tanggalLaporan = new Date();
+  const { periode_id } = req.query;
+  if (!periode_id) {
+    return res.status(400).json({ message: 'ID Periode dibutuhkan' });
+  }
+
   try {
     const query = `
       SELECT 
@@ -39,16 +45,15 @@ export const getNeraca = async (req, res) => {
       FROM 
         kode_akun k
       LEFT JOIN 
-        jurnal_umum j ON k.id = j.akun_id AND j.tgl_transaksi <= $1
+        jurnal_umum j ON k.id = j.akun_id AND j.periode_id = $1
       GROUP BY k.id ORDER BY k.kode;
     `;
-    const result = await db.query(query, [tanggalLaporan]);
-    
-    // --- PERBAIKAN DI SINI ---
+    const result = await db.query(query, [periode_id]);
+
     const laporan = {
-      aset: [], kewajiban: [], modal: [], pendapatan: []
+      aset: [], kewajiban: [], modal: [], pendapatan: [], beban: []
     };
-    let totalAset = 0, totalKewajiban = 0, totalModal = 0, totalPendapatan = 0;
+    let totalAset = 0, totalKewajiban = 0, totalModal = 0, totalPendapatan = 0, totalBeban = 0;
 
     result.rows.forEach(akun => {
       let saldoAkhir = 0;
@@ -74,14 +79,19 @@ export const getNeraca = async (req, res) => {
       } else if (akun.header_akun === 'PENDAPATAN') {
         laporan.pendapatan.push(akunData);
         totalPendapatan += saldoAkhir;
+      } else if (akun.header_akun === 'BEBAN') {
+        laporan.beban.push(akunData);
+        totalBeban += saldoAkhir;
       }
     });
+
+    const labaRugiPeriodeIni = totalPendapatan - totalBeban;
+    laporan.modal.push({ nama_akun: 'Laba/Rugi Periode Ini', saldo: labaRugiPeriodeIni });
 
     laporan.totalAset = totalAset;
     laporan.totalKewajiban = totalKewajiban;
     laporan.totalModal = totalModal;
-    laporan.totalPendapatan = totalPendapatan;
-    laporan.totalKewajibanDanModal = totalKewajiban + totalModal + totalPendapatan;
+    laporan.totalKewajibanDanModal = totalKewajiban + totalModal + labaRugiPeriodeIni;
 
     res.status(200).json(laporan);
 
@@ -91,30 +101,29 @@ export const getNeraca = async (req, res) => {
   }
 };
 
-// PASTIKAN FUNGSI INI ADA DAN DIEKSPOR
+// Fungsi untuk membuat laporan Laba Rugi
 export const getLabaRugi = async (req, res) => {
-  const startDate = '1970-01-01';
-  const endDate = new Date();
+  const { periode_id } = req.query;
+  if (!periode_id) return res.status(400).json({ message: 'ID Periode dibutuhkan' });
 
   try {
-    const query = `
-      SELECT 
-        k.header_akun,
-        k.nama_akun,
-        SUM(j.kredit) - SUM(j.debit) as saldo_pendapatan,
-        SUM(j.debit) - SUM(j.kredit) as saldo_beban
-      FROM 
-        jurnal_umum j
-      JOIN 
-        kode_akun k ON j.akun_id = k.id
-      WHERE 
-        (k.header_akun = 'PENDAPATAN' OR k.header_akun = 'BEBAN')
-        AND j.tgl_transaksi BETWEEN $1 AND $2
-      GROUP BY
-        k.header_akun, k.nama_akun;
-    `;
-    const result = await db.query(query, [startDate, endDate]);
+    const periode = await db.query('SELECT * FROM periode_akuntansi WHERE id = $1', [periode_id]);
+    if (periode.rows.length === 0) return res.status(404).json({ message: 'Periode tidak ditemukan' });
 
+    const { tgl_mulai, tgl_selesai } = periode.rows[0];
+
+    const query = `
+      SELECT k.header_akun, k.nama_akun,
+             SUM(j.kredit) - SUM(j.debit) as saldo_pendapatan,
+             SUM(j.debit) - SUM(j.kredit) as saldo_beban
+      FROM jurnal_umum j JOIN kode_akun k ON j.akun_id = k.id
+      WHERE (k.header_akun = 'PENDAPATAN' OR k.header_akun = 'BEBAN')
+        AND j.tgl_transaksi BETWEEN $1 AND $2
+      GROUP BY k.header_akun, k.nama_akun;
+    `;
+    const result = await db.query(query, [tgl_mulai, tgl_selesai]);
+
+    
     const laporan = {
       pendapatan: [],
       beban: [],
@@ -124,14 +133,21 @@ export const getLabaRugi = async (req, res) => {
     };
 
     result.rows.forEach(akun => {
+      let saldo = 0;
+      if (akun.posisi_saldo === 'debit') {
+        saldo = parseFloat(akun.total_debit) - parseFloat(akun.total_kredit);
+      } else {
+        saldo = parseFloat(akun.total_kredit) - parseFloat(akun.total_debit);
+      }
+
+      const akunData = { nama_akun: akun.nama_akun, saldo };
+      
       if (akun.header_akun === 'PENDAPATAN') {
-        const total = parseFloat(akun.saldo_pendapatan);
-        laporan.pendapatan.push({ nama_akun: akun.nama_akun, total });
-        laporan.totalPendapatan += total;
+        laporan.pendapatan.push(akunData);
+        laporan.totalPendapatan += saldo;
       } else if (akun.header_akun === 'BEBAN') {
-        const total = parseFloat(akun.saldo_beban);
-        laporan.beban.push({ nama_akun: akun.nama_akun, total });
-        laporan.totalBeban += total;
+        laporan.beban.push(akunData);
+        laporan.totalBeban += saldo;
       }
     });
 
@@ -144,26 +160,26 @@ export const getLabaRugi = async (req, res) => {
   }
 };
 
-
-// Tambahkan fungsi baru ini di controller Anda
+// Fungsi untuk menghitung SHU
 export const hitungSHU = async (req, res) => {
-  const tahun = new Date().getFullYear();
-  const startDate = `${tahun}-01-01`;
-  const endDate = `${tahun}-12-31`;
+  const { periode_id } = req.query;
+  if (!periode_id) return res.status(400).json({ message: 'ID Periode dibutuhkan' });
   const client = await db.connect();
 
   try {
     await client.query('BEGIN');
 
-    // TAHAP 1: Ambil semua Konfigurasi Persentase dari DB
-    const configResult = await client.query('SELECT kunci_konfigurasi, nilai FROM konfigurasi_shu;');
-    const configs = configResult.rows.reduce((acc, row) => {
-      acc[row.kunci_konfigurasi] = parseFloat(row.nilai);
-      return acc;
-    }, {});
+    const periodeResult = await client.query('SELECT tgl_mulai, tgl_selesai FROM periode_akuntansi WHERE id = $1', [periode_id]);
+    if (periodeResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Periode tidak ditemukan' });
+    }
+    const { tgl_mulai, tgl_selesai } = periodeResult.rows[0];
 
-    // TAHAP 2: Hitung Total Pendapatan & Beban untuk SHU Kotor
-    const labaRugiResult = await client.query(`SELECT k.header_akun, SUM(j.kredit) - SUM(debit) as saldo FROM jurnal_umum j JOIN kode_akun k ON j.akun_id = k.id WHERE (k.header_akun = 'PENDAPATAN' OR k.header_akun = 'BEBAN') AND j.tgl_transaksi BETWEEN $1 AND $2 GROUP BY k.header_akun;`, [startDate, endDate]);
+    // --- TAHAP 1: Hitung Saldo Laba & Alokasi Dana ---
+    const configs = (await client.query('SELECT kunci_konfigurasi, nilai FROM konfigurasi_shu')).rows.reduce((acc, row) => ({...acc, [row.kunci_konfigurasi]: parseFloat(row.nilai)}), {});
+
+    const labaRugiResult = await client.query(`SELECT k.header_akun, SUM(j.kredit) - SUM(debit) as saldo FROM jurnal_umum j JOIN kode_akun k ON j.akun_id = k.id WHERE (k.header_akun = 'PENDAPATAN' OR k.header_akun = 'BEBAN') AND j.periode_id = $1 GROUP BY k.header_akun;`, [periode_id]);
     let totalPendapatan = 0, totalBeban = 0;
     labaRugiResult.rows.forEach(row => {
       if (row.header_akun === 'PENDAPATAN') totalPendapatan = parseFloat(row.saldo);
@@ -171,40 +187,31 @@ export const hitungSHU = async (req, res) => {
     });
     const shuKotor = totalPendapatan - totalBeban;
 
-    // TAHAP 3: Lakukan Perhitungan SHU Bertahap
-    const jasaResult = await client.query(`SELECT COALESCE(SUM(kredit) - SUM(debit), 0) as total FROM jurnal_umum WHERE akun_id = 41 AND tgl_transaksi BETWEEN $1 AND $2;`, [startDate, endDate]);
+    const jasaResult = await client.query(`SELECT COALESCE(SUM(kredit) - SUM(debit), 0) as total FROM jurnal_umum WHERE akun_id = 41 AND periode_id = $1;`, [periode_id]);
     const totalJasaPinjaman = parseFloat(jasaResult.rows[0].total);
     const alokasiUntukPeminjam = totalJasaPinjaman * (configs.alokasi_jasa_peminjam_persen / 100);
     const saldoLaba = shuKotor - alokasiUntukPeminjam;
+    const danaUntukAnggotaViaSimpanan = saldoLaba * (configs.distribusi_anggota_persen / 100);
+    const danaUntukAnggotaViaPinjaman = alokasiUntukPeminjam;
 
-    // --- PASTIKAN BLOK INI ADA ---
-    // Mendefinisikan konstanta 'distribusi'
-    const distribusi = {
-      anggota: saldoLaba * (configs.distribusi_anggota_persen / 100),
-      cadangan: saldoLaba * (configs.distribusi_cadangan_persen / 100),
-      danaSosial: saldoLaba * (configs.distribusi_sosial_persen / 100),
-      pengurus: saldoLaba * (configs.distribusi_pengurus_persen / 100),
-    };
-    // -----------------------------
-
-    // TAHAP 4: Hitung Poin (ini bagian yang sangat panjang, pastikan tidak terpotong)
-    // ... (kode perhitungan poin yang sudah ada sebelumnya) ...
-    const anggotaResult = await client.query('SELECT id, nama FROM anggota;');
+    // --- TAHAP 2: Hitung Poin & SHU per Anggota ---
+    const anggotaResult = await client.query('SELECT id, nama FROM anggota WHERE status = \'aktif\';');
     let rincianAnggota = [];
     let totalPoinSimpananKeseluruhan = 0;
 
-    for (const anggota of anggotaResult.rows) {
-      let totalPoinPribadi = 0;
-      const pokokWajibResult = await client.query(`SELECT SUM(saldo) as total FROM rekening_simpanan WHERE anggota_id = $1 AND (jenis_simpanan = 'Pokok' OR jenis_simpanan = 'Wajib')`, [anggota.id]);
-      const saldoPokokWajib = parseFloat(pokokWajibResult.rows[0].total || 0);
-      totalPoinPribadi += saldoPokokWajib / 10000;
+    const totalJasaDibayarSemuaAnggotaResult = await client.query(`SELECT COALESCE(SUM(ja.jasa_dibayar), 0) as total FROM jadwal_angsuran ja JOIN rekening_pinjaman rp ON ja.rekening_pinjaman_id = rp.id WHERE rp.anggota_id IN (SELECT id FROM anggota WHERE status = 'aktif') AND ja.tgl_jatuh_tempo BETWEEN $1 AND $2`, [tgl_mulai, tgl_selesai]);
+    const totalJasaDibayarSemuaAnggota = parseFloat(totalJasaDibayarSemuaAnggotaResult.rows[0].total) || 1; 
 
-      const sukarelaResult = await client.query(`SELECT id FROM rekening_simpanan WHERE anggota_id = $1 AND jenis_simpanan = 'Sukarela'`, [anggota.id]);
+    for (const anggota of anggotaResult.rows) {
+      const pokokWajibResult = await client.query(`SELECT COALESCE(SUM(saldo), 0) as total FROM rekening_simpanan WHERE anggota_id = $1 AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib')`, [anggota.id]);
+      const poinPokokWajib = parseFloat(pokokWajibResult.rows[0].total) / 10000;
+
+      let poinSukarela = 0;
+      const sukarelaResult = await client.query(`SELECT id FROM rekening_simpanan WHERE anggota_id = $1 AND jenis_simpanan = 'Simpanan Sukarela'`, [anggota.id]);
       if (sukarelaResult.rows.length > 0) {
         const idRekeningSukarela = sukarelaResult.rows[0].id;
-        let poinSukarelaBulanan = 0;
         for (let bulan = 1; bulan <= 12; bulan++) {
-          const saldoBulanResult = await client.query(`SELECT COALESCE(SUM(CASE WHEN jenis_transaksi = 'Setor' THEN jumlah ELSE -jumlah END), 0) as saldo FROM transaksi_simpanan WHERE rekening_id = $1 AND EXTRACT(MONTH FROM tgl_transaksi) <= $2 AND EXTRACT(YEAR FROM tgl_transaksi) = $3`, [idRekeningSukarela, bulan, tahun]);
+          const saldoBulanResult = await client.query(`SELECT COALESCE(SUM(CASE WHEN jenis_transaksi = 'Setor' THEN jumlah ELSE -jumlah END), 0) as saldo FROM transaksi_simpanan WHERE rekening_id = $1 AND EXTRACT(MONTH FROM tgl_transaksi) <= $2 AND EXTRACT(YEAR FROM tgl_transaksi) = $3`, [idRekeningSukarela, bulan, tgl_mulai.getFullYear()]);
           const saldoAkhirBulan = parseFloat(saldoBulanResult.rows[0].saldo);
 
           let hargaSaham = 15000;
@@ -213,41 +220,51 @@ export const hitungSHU = async (req, res) => {
           else if (saldoAkhirBulan > 10000000) hargaSaham = 25000;
           else if (saldoAkhirBulan > 5000000) hargaSaham = 20000;
 
-          poinSukarelaBulanan += (saldoAkhirBulan / 12) / hargaSaham;
+          poinSukarela += (saldoAkhirBulan / 12) / hargaSaham;
         }
-        totalPoinPribadi += poinSukarelaBulanan;
       }
+
+      const lebaranResult = await client.query(`SELECT COALESCE(SUM(saldo), 0) as total FROM rekening_simpanan WHERE anggota_id = $1 AND jenis_simpanan = 'Simpanan Lebaran'`, [anggota.id]);
+      const poinLebaran = parseFloat(lebaranResult.rows[0].total) / 15000;
+
+      const totalPoinPribadi = poinPokokWajib + poinSukarela + poinLebaran;
+      totalPoinSimpananKeseluruhan += totalPoinPribadi;
+
+      const jasaPribadiResult = await client.query(`SELECT COALESCE(SUM(ja.jasa_dibayar), 0) as total FROM jadwal_angsuran ja JOIN rekening_pinjaman rp ON ja.rekening_pinjaman_id = rp.id WHERE rp.anggota_id = $1 AND ja.tgl_jatuh_tempo BETWEEN $2 AND $3`, [anggota.id, tgl_mulai, tgl_selesai]);
+      const jasaPribadiDibayar = parseFloat(jasaPribadiResult.rows[0].total || 0);
+      const shuDariPinjaman = (jasaPribadiDibayar / totalJasaDibayarSemuaAnggota) * danaUntukAnggotaViaPinjaman;
 
       rincianAnggota.push({
         anggota_id: anggota.id,
         nama: anggota.nama,
-        totalPoin: totalPoinPribadi
+        poinPokokWajib,
+        poinSukarela,
+        poinLebaran,
+        totalPoin: totalPoinPribadi,
+        shuDariPinjaman,
       });
-      totalPoinSimpananKeseluruhan += totalPoinPribadi;
     }
 
-    const indeksPoin = totalPoinSimpananKeseluruhan > 0 ? distribusi.anggota / totalPoinSimpananKeseluruhan : 0;
+    // --- TAHAP 3: Hitung Indeks & SHU Final per Anggota ---
+    const indeksPoin = totalPoinSimpananKeseluruhan > 0 ? danaUntukAnggotaViaSimpanan / totalPoinSimpananKeseluruhan : 0;
 
-    rincianAnggota = rincianAnggota.map(anggota => ({
-      ...anggota,
-      shuDiterima: anggota.totalPoin * indeksPoin
-    }));
+    rincianAnggota = rincianAnggota.map(anggota => {
+      const shuDariSimpanan = anggota.totalPoin * indeksPoin;
+      return {
+        ...anggota,
+        shuDariSimpanan,
+        shuTotalDiterima: shuDariSimpanan + anggota.shuDariPinjaman,
+      }
+    });
 
-    // TAHAP 5: Kirim Hasil Lengkap
-    const hasilFinal = {
-      shuKotor,
-      totalJasaPinjaman,
+    // --- TAHAP 4: Kirim Hasil Lengkap ---
+    res.status(200).json({
+      danaUntukAnggotaViaSimpanan,
       alokasiUntukPeminjam,
-      saldoLaba,
-      distribusi, // Variabel ini sekarang sudah didefinisikan
-      danaUntukAnggota: distribusi.anggota,
       totalPoinSimpananKeseluruhan,
       indeksPoin,
       rincianAnggota,
-    };
-
-    await client.query('COMMIT');
-    res.status(200).json(hasilFinal);
+    });
 
   } catch (error) {
     await client.query('ROLLBACK');

@@ -56,17 +56,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, watch } from "vue";
+import { useLaporanStore } from "@/stores/laporan.store.js";
 import LaporanService from "@/services/laporan.service.js";
 
 const laporanData = ref(null);
+const isLoading = ref(true);
+const laporanStore = useLaporanStore();
 
-const fetchLabaRugi = async () => {
+const fetchLabaRugi = async (periodeId) => {
+  if (!periodeId) return;
+  isLoading.value = true;
   try {
-    const response = await LaporanService.getLabaRugi();
+    const response = await LaporanService.getLabaRugi(periodeId);
     laporanData.value = response.data;
   } catch (error) {
     console.error("Error mengambil data laba rugi:", error);
+  } finally {
+    isLoading.value = false;
   }
 };
 
@@ -75,8 +82,15 @@ const formatUang = (angka) =>
     angka || 0
   );
 
-onMounted(fetchLabaRugi);
+watch(
+  () => laporanStore.periodeAktifId,
+  (newId) => {
+    fetchLabaRugi(newId);
+  },
+  { immediate: true }
+);
 </script>
+
 <style scoped>
 .laporan-container {
   padding: 20px;

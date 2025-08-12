@@ -2,23 +2,25 @@ import axios from "axios";
 
 const API_URL = "http://localhost:5000/api/laporan";
 
-const LaporanService = {
-  getJurnalUmum() {
-    return axios.get(`${API_URL}/jurnal-umum`);
+export default {
+  getPeriodeList() {
+    // <-- FUNGSI BARU
+    return axios.get(`${API_URL}/periode`);
   },
-
-  // FUNGSI BARU
-  getNeraca() {
-    return axios.get(`${API_URL}/neraca`);
+  getJurnalUmum(periodeId) {
+    // <-- Ubah untuk menerima periodeId
+    return axios.get(`${API_URL}/jurnal-umum?periode_id=${periodeId}`);
   },
-
-  getLabaRugi() {
-    return axios.get(`${API_URL}/laba-rugi`);
+  getNeraca(periodeId) {
+    // <-- Ubah untuk menerima periodeId
+    return axios.get(`${API_URL}/neraca?periode_id=${periodeId}`);
   },
-
-  hitungSHU() {
-    return axios.get(`${API_URL}/hitung-shu`);
+  getLabaRugi(periodeId) {
+    // <-- Ubah untuk menerima periodeId
+    return axios.get(`${API_URL}/laba-rugi?periode_id=${periodeId}`);
+  },
+  hitungSHU(periodeId) {
+    // <-- Ubah untuk menerima periodeId
+    return axios.get(`${API_URL}/hitung-shu?periode_id=${periodeId}`);
   },
 };
-
-export default LaporanService;

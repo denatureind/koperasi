@@ -1,142 +1,162 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/stores/auth.store.js";
 
-// Layouts
-import DataMasterLayout from "@/views/datamaster/DataMasterLayout.vue";
-import SimpananLayout from "@/views/simpanan/SimpananLayout.vue";
-import PinjamanLayout from "@/views/pinjaman/PinjamanLayout.vue";
-import PembukuanLayout from "@/views/akuntansi/PembukuanLayout.vue";
-import LaporanLayout from "@/views/laporan/LaporanLayout.vue";
+// HANYA IMPORT LAYOUT UTAMA KITA
+import AppLayout from "@/components/layouts/AppLayout.vue";
 
 const routes = [
-  { path: "/", name: "home", component: () => import("@/views/HomeView.vue") },
   {
     path: "/login",
     name: "login",
     component: () => import("@/views/auth/LoginView.vue"),
   },
-
   {
-    path: "/data-master",
-    component: DataMasterLayout,
+    // RUTE INDUK UNTUK SEMUA HALAMAN DASBOR
+    path: "/",
+    component: AppLayout, // Semua yang di dalam 'children' akan punya sidebar & header
     children: [
-      { path: "", redirect: { name: "anggota-list" } },
       {
-        path: "anggota",
+        path: "", // Halaman default saat membuka alamat utama
+        name: "home",
+        component: () => import("@/views/HomeView.vue"),
+      },
+
+      // --- GRUP DATA MASTER ---
+      { path: "data-master", redirect: "/data-master/anggota" },
+      {
+        path: "data-master/anggota",
         name: "anggota-list",
         component: () => import("@/views/anggota/AnggotaList.vue"),
       },
       {
-        path: "anggota/tambah",
+        path: "data-master/anggota/tambah",
         name: "anggota-tambah",
         component: () => import("@/views/anggota/AnggotaForm.vue"),
       },
-      // --- URUTAN PENTING: 'edit' sebelum ':id' ---
       {
-        path: "anggota/edit/:id",
+        path: "data-master/anggota/edit/:id",
         name: "anggota-edit",
         component: () => import("@/views/anggota/AnggotaForm.vue"),
       },
       {
-        path: "anggota/:id",
+        path: "data-master/anggota/:id",
         name: "anggota-detail",
         component: () => import("@/views/anggota/AnggotaDetail.vue"),
       },
-    ],
-  },
-  {
-    path: "/simpanan",
-    component: SimpananLayout,
-    children: [
-      { path: "", redirect: { name: "data-simpanan" } },
       {
-        path: "rekening",
+        path: "data-master/anggota/impor",
+        name: "anggota-impor",
+        component: () => import("@/views/anggota/ImportAnggotaView.vue"),
+      },
+
+      // --- GRUP SIMPANAN ---
+      { path: "simpanan", redirect: "/simpanan/rekening" },
+      {
+        path: "simpanan/rekening",
         name: "data-simpanan",
         component: () => import("@/views/simpanan/DataSimpananView.vue"),
       },
       {
-        path: "transaksi",
+        path: "simpanan/rekening/:id", // Detail rekening menjadi anak
+        name: "rekening-detail",
+        component: () => import("@/views/simpanan/RekeningDetail.vue"),
+      },
+      {
+        path: "simpanan/transaksi",
         name: "transaksi-simpanan",
         component: () => import("@/views/simpanan/TransaksiSimpananView.vue"),
       },
-    ],
-  },
-  {
-    path: "/pinjaman",
-    component: PinjamanLayout,
-    children: [
-      { path: "", redirect: { name: "data-pinjaman" } },
       {
-        path: "data",
+        path: "simpanan/konfigurasi",
+        name: "konfigurasi-simpanan",
+        component: () => import("@/views/simpanan/KonfigurasiSimpananView.vue"),
+      },
+      {
+        path: "simpanan/impor-saldo",
+        name: "simpanan-impor-saldo",
+        component: () => import("@/views/simpanan/ImportSaldoSimpanan.vue"),
+      },
+
+      // --- GRUP PINJAMAN ---
+      { path: "pinjaman", redirect: "/pinjaman/data" },
+      {
+        path: "pinjaman/data",
         name: "data-pinjaman",
         component: () => import("@/views/pinjaman/DataPinjamanView.vue"),
       },
       {
-        path: "transaksi",
+        path: "pinjaman/data/:id", // Detail pinjaman menjadi anak
+        name: "pinjaman-detail",
+        component: () => import("@/views/pinjaman/PinjamanDetail.vue"),
+      },
+      {
+        path: "pinjaman/transaksi",
         name: "transaksi-pinjaman",
         component: () => import("@/views/pinjaman/TransaksiPinjamanView.vue"),
       },
-    ],
-  },
-  {
-    path: "/pembukuan",
-    component: PembukuanLayout,
-    children: [
-      { path: "", redirect: { name: "kode-akun" } },
       {
-        path: "kode-akun",
+        path: "pinjaman/konfigurasi", // <-- RUTE YANG BENAR
+        name: "konfigurasi-pinjaman",
+        component: () => import("@/views/pinjaman/KonfigurasiPinjamanView.vue"),
+      },
+      {
+        path: "pinjaman/ajukan/:anggotaId", // Form ajukan pinjaman
+        name: "pinjaman-tambah",
+        component: () => import("@/views/pinjaman/PinjamanForm.vue"),
+      },
+      {
+        path: "pinjaman/impor",
+        name: "pinjaman-impor",
+        component: () => import("@/views/pinjaman/ImportPinjamanView.vue"),
+      },
+
+      // --- GRUP PEMBUKUAN ---
+      { path: "pembukuan", redirect: "/pembukuan/kode-akun" },
+      {
+        path: "pembukuan/kode-akun",
         name: "kode-akun",
         component: () => import("@/views/akuntansi/KodeAkunView.vue"),
       },
       {
-        path: "jurnal-umum",
+        path: "pembukuan/jurnal-umum",
         name: "jurnal-umum",
         component: () => import("@/views/akuntansi/JurnalUmumView.vue"),
       },
       {
-        path: "konfigurasi-shu",
+        path: "pembukuan/periode",
+        name: "manajemen-periode",
+        component: () => import("@/views/pembukuan/ManajemenPeriodeView.vue"),
+      },
+      {
+        path: "pembukuan/konfigurasi-shu",
         name: "konfigurasi-shu",
         component: () => import("@/views/pembukuan/KonfigurasiSHUView.vue"),
       },
-    ],
-  },
-  {
-    path: "/laporan",
-    component: LaporanLayout,
-    children: [
-      { path: "", redirect: { name: "laporan-neraca" } },
+
+      // --- GRUP LAPORAN ---
+      { path: "laporan", redirect: "/laporan/neraca" },
       {
-        path: "neraca",
+        path: "laporan/neraca",
         name: "laporan-neraca",
         component: () => import("@/views/laporan/NeracaView.vue"),
       },
       {
-        path: "laba-rugi",
+        path: "laporan/laba-rugi",
         name: "laporan-laba-rugi",
         component: () => import("@/views/laporan/LabaRugiView.vue"),
       },
       {
-        path: "shu",
+        path: "laporan/shu",
         name: "laporan-shu",
         component: () => import("@/views/laporan/SHUView.vue"),
       },
     ],
   },
-  // Rute-rute detail yang tidak memiliki layout induk (jika ada)
+  // Rute "Catch-all" untuk halaman 404 (selalu di paling akhir)
   {
-    path: "/rekening/:id",
-    name: "rekening-detail",
-    component: () => import("@/views/simpanan/RekeningDetail.vue"),
-  },
-  {
-    path: "/pinjaman/:id",
-    name: "pinjaman-detail",
-    component: () => import("@/views/pinjaman/PinjamanDetail.vue"),
-  },
-  {
-    path: "/anggota/:anggotaId/pinjaman/tambah",
-    name: "pinjaman-tambah",
-    component: () => import("@/views/pinjaman/PinjamanForm.vue"),
+    path: "/:pathMatch(.*)*",
+    name: "NotFound",
+    component: () => import("@/views/NotFound.vue"),
   },
 ];
 
@@ -145,18 +165,16 @@ const router = createRouter({
   routes,
 });
 
-// Route guard (tidak berubah)
+// Route guard tidak berubah
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
-  const requiresAuth = to.name !== "login";
+  const isPublicPage = to.path === "/login";
 
-  if (requiresAuth && !authStore.isLoggedIn) {
-    next({ name: "login" });
-  } else if (to.name === "login" && authStore.isLoggedIn) {
-    next({ name: "home" });
-  } else {
-    next();
+  if (!isPublicPage && !authStore.isLoggedIn) {
+    return next("/login");
   }
+
+  next();
 });
 
 export default router;

@@ -32,7 +32,6 @@ export const updateAnggota = async (req, res) => {
 };
 
 // FUNGSI BARU: Hapus data anggota
-// Ganti fungsi deleteAnggota yang lama dengan yang ini
 export const deleteAnggota = async (req, res) => {
   const { id } = req.params;
 
@@ -69,9 +68,7 @@ export const deleteAnggota = async (req, res) => {
   }
 };
 
-
-// --- FUNGSI LAMA (TETAP ADA) ---
-
+// FUNGSI LAMA (TETAP ADA)
 export const getAllAnggota = async (req, res) => {
   try {
     const query = 'SELECT * FROM anggota ORDER BY nama ASC;';
@@ -98,11 +95,13 @@ export const getAnggotaById = async (req, res) => {
   }
 };
 
+// FUNGSI LAMA: Membuat anggota baru (dengan perubahan)
 export const createAnggota = async (req, res) => {
-  const { nama, tgl_masuk } = req.body;
-  if (!nama || !tgl_masuk) {
-    return res.status(400).json({ message: 'Nama dan tanggal masuk wajib diisi' });
+  const { nama, jenis_kelamin } = req.body; // <-- Diubah
+  if (!nama || !jenis_kelamin) { // <-- Diubah
+    return res.status(400).json({ message: 'Nama dan Jenis Kelamin wajib diisi' });
   }
+
   const prefix = 'BM';
   try {
     const lastAnggotaQuery = `
@@ -120,11 +119,11 @@ export const createAnggota = async (req, res) => {
     }
     const nextKodeAnggota = `${prefix}-${String(nextNumber).padStart(3, '0')}`;
     const insertQuery = `
-      INSERT INTO anggota (kode_anggota, nama, tgl_masuk)
+      INSERT INTO anggota (kode_anggota, nama, jenis_kelamin)
       VALUES ($1, $2, $3)
       RETURNING *;
     `;
-    const values = [nextKodeAnggota, nama, tgl_masuk];
+    const values = [nextKodeAnggota, nama, jenis_kelamin]; // <-- Diubah
     const result = await db.query(insertQuery, values);
     res.status(201).json(result.rows[0]);
   } catch (error) {
