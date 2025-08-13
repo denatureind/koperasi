@@ -2,7 +2,6 @@
   <div
     class="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 min-h-[calc(100vh-12rem)]"
   >
-    <!-- Header Section -->
     <div
       class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-gray-200"
     >
@@ -17,6 +16,14 @@
       </div>
 
       <div class="flex items-center gap-3">
+        <router-link
+          to="/pembukuan/jurnal/tambah"
+          class="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-sm hover:shadow-md"
+        >
+          <i class="fas fa-plus"></i>
+          <span>Tambah Transaksi</span>
+        </router-link>
+
         <div
           class="bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100"
         >
@@ -34,7 +41,6 @@
       </div>
     </div>
 
-    <!-- Loading State -->
     <div
       v-if="isLoading"
       class="flex flex-col items-center justify-center py-16"
@@ -45,7 +51,6 @@
       <p class="text-gray-600 font-medium">Memuat data jurnal...</p>
     </div>
 
-    <!-- Empty State -->
     <div
       v-else-if="listJurnal.length === 0"
       class="bg-white rounded-xl border border-gray-200 p-8 text-center"
@@ -66,7 +71,6 @@
       </router-link>
     </div>
 
-    <!-- Jurnal Table -->
     <div
       v-else
       class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
@@ -109,7 +113,6 @@
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <template v-for="(jurnal, index) in listJurnal" :key="jurnal.id">
-              <!-- Debit Row -->
               <tr
                 v-if="jurnal.debit > 0"
                 class="hover:bg-indigo-50/50 transition-colors group"
@@ -151,11 +154,10 @@
                 </td>
               </tr>
 
-              <!-- Kredit Row -->
               <tr v-else class="hover:bg-amber-50/50 transition-colors group">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <!-- Empty for alignment -->
-                </td>
+                <td
+                  class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                ></td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center pl-8">
                     <div
@@ -188,7 +190,6 @@
                 </td>
               </tr>
 
-              <!-- Separator for transaction groups -->
               <tr v-if="shouldAddSeparator(index)" class="bg-gray-50">
                 <td colspan="5" class="px-6 py-2">
                   <div class="h-px bg-gray-200"></div>
@@ -197,7 +198,6 @@
             </template>
           </tbody>
 
-          <!-- Total Row -->
           <tfoot class="bg-gray-50 border-t border-gray-200">
             <tr>
               <th
@@ -222,7 +222,6 @@
       </div>
     </div>
 
-    <!-- Summary Info -->
     <div
       v-if="!isLoading && listJurnal.length > 0"
       class="mt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-sm text-gray-500"

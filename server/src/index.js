@@ -35,6 +35,8 @@ import jenisSimpananRoutes from './routes/jenisSimpananRoutes.js';
 import importRoutes from './routes/importRoutes.js';
 import jenisPinjamanRoutes from './routes/jenisPinjamanRoutes.js';
 import periodeRoutes from './routes/periodeRoutes.js';
+import jurnalRoutes from './routes/jurnalRoutes.js'; // <-- IMPORT BARU
+
 
 
 
@@ -62,6 +64,7 @@ app.use('/api/jenis-simpanan', jenisSimpananRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/jenis-pinjaman', jenisPinjamanRoutes);
 app.use('/api/periode', periodeRoutes);
+app.use('/api/jurnal', jurnalRoutes); // <-- GUNAKAN ROUTE BARU
 
 
 // Mendefinisikan PORT dari file .env

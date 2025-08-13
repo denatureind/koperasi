@@ -11,12 +11,11 @@ const routes = [
     component: () => import("@/views/auth/LoginView.vue"),
   },
   {
-    // RUTE INDUK UNTUK SEMUA HALAMAN DASBOR
     path: "/",
-    component: AppLayout, // Semua yang di dalam 'children' akan punya sidebar & header
+    component: AppLayout,
     children: [
       {
-        path: "", // Halaman default saat membuka alamat utama
+        path: "",
         name: "home",
         component: () => import("@/views/HomeView.vue"),
       },
@@ -57,7 +56,7 @@ const routes = [
         component: () => import("@/views/simpanan/DataSimpananView.vue"),
       },
       {
-        path: "simpanan/rekening/:id", // Detail rekening menjadi anak
+        path: "simpanan/rekening/:id",
         name: "rekening-detail",
         component: () => import("@/views/simpanan/RekeningDetail.vue"),
       },
@@ -85,7 +84,7 @@ const routes = [
         component: () => import("@/views/pinjaman/DataPinjamanView.vue"),
       },
       {
-        path: "pinjaman/data/:id", // Detail pinjaman menjadi anak
+        path: "pinjaman/data/:id",
         name: "pinjaman-detail",
         component: () => import("@/views/pinjaman/PinjamanDetail.vue"),
       },
@@ -95,12 +94,12 @@ const routes = [
         component: () => import("@/views/pinjaman/TransaksiPinjamanView.vue"),
       },
       {
-        path: "pinjaman/konfigurasi", // <-- RUTE YANG BENAR
+        path: "pinjaman/konfigurasi",
         name: "konfigurasi-pinjaman",
         component: () => import("@/views/pinjaman/KonfigurasiPinjamanView.vue"),
       },
       {
-        path: "pinjaman/ajukan/:anggotaId", // Form ajukan pinjaman
+        path: "pinjaman/ajukan/:anggotaId",
         name: "pinjaman-tambah",
         component: () => import("@/views/pinjaman/PinjamanForm.vue"),
       },
@@ -121,6 +120,11 @@ const routes = [
         path: "pembukuan/jurnal-umum",
         name: "jurnal-umum",
         component: () => import("@/views/akuntansi/JurnalUmumView.vue"),
+      },
+      {
+        path: "pembukuan/jurnal/tambah",
+        name: "jurnal-manual-tambah",
+        component: () => import("@/views/akuntansi/JurnalManualView.vue"),
       },
       {
         path: "pembukuan/periode",

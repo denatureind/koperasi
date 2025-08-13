@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Definisikan base URL untuk semua endpoint anggota
-const API_URL = "http://localhost:5000/api/anggota";
+const API_URL = "/api/anggota";
 
 // Buat sebuah objek untuk menampung semua fungsi API
 const AnggotaService = {

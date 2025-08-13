@@ -1,5 +1,5 @@
 import axios from "axios";
-const API_URL = "http://localhost:5000/api/jenis-simpanan";
+const API_URL = "/api/jenis-simpanan";
 export default {
   getAll() {
     return axios.get(API_URL);

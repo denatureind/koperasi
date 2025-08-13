@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/periode";
+const API_URL = "/api/periode";
 
 const PeriodeService = {
   // Mengambil semua periode akuntansi yang ada
