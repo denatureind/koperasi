@@ -1,18 +1,29 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/stores/auth.store.js";
+import { useMemberAuthStore } from "@/stores/memberAuth.store.js";
 
-// HANYA IMPORT LAYOUT UTAMA KITA
+// Import Layouts
 import AppLayout from "@/components/layouts/AppLayout.vue";
+import MemberLayout from "@/components/layouts/MemberLayout.vue";
 
 const routes = [
+  // --- RUTE PUBLIK (Boleh diakses siapa saja) ---
   {
     path: "/login",
     name: "login",
     component: () => import("@/views/auth/LoginView.vue"),
   },
   {
+    path: "/member/login",
+    name: "member-login",
+    component: () => import("@/views/auth/MemberLoginView.vue"),
+  },
+
+  // --- RUTE ADMIN (Dilindungi, butuh login admin) ---
+  {
     path: "/",
     component: AppLayout,
+    meta: { requiresAuth: "admin" }, // Penanda rute admin
     children: [
       {
         path: "",
@@ -21,6 +32,7 @@ const routes = [
       },
 
       // --- GRUP DATA MASTER ---
+      // BARIS YANG HILANG & DIPERBAIKI ADA DI SINI
       { path: "data-master", redirect: "/data-master/anggota" },
       {
         path: "data-master/anggota",
@@ -127,6 +139,16 @@ const routes = [
         component: () => import("@/views/akuntansi/JurnalManualView.vue"),
       },
       {
+        path: "pembukuan/buku-besar",
+        name: "buku-besar",
+        component: () => import("@/views/akuntansi/BukuBesarView.vue"),
+      },
+      {
+        path: "pembukuan/buku-besar/:id",
+        name: "buku-besar-detail",
+        component: () => import("@/views/akuntansi/BukuBesarDetailView.vue"),
+      },
+      {
         path: "pembukuan/periode",
         name: "manajemen-periode",
         component: () => import("@/views/pembukuan/ManajemenPeriodeView.vue"),
@@ -154,9 +176,60 @@ const routes = [
         name: "laporan-shu",
         component: () => import("@/views/laporan/SHUView.vue"),
       },
+
+      // --- GRUP TOKO ---
+      {
+        path: "toko",
+        redirect: "/toko/input-belanja", // Redirect dari /toko ke halaman default
+      },
+      {
+        path: "toko/input-belanja",
+        name: "input-belanja",
+        component: () => import("@/views/toko/InputBelanjaView.vue"),
+      },
     ],
   },
-  // Rute "Catch-all" untuk halaman 404 (selalu di paling akhir)
+
+  // --- RUTE ANGGOTA (Dilindungi, butuh login anggota) ---
+  {
+    path: "/member",
+    component: MemberLayout,
+    meta: { requiresAuth: "member" },
+    children: [
+      {
+        path: "dashboard",
+        name: "member-dashboard",
+        component: () => import("@/views/member/MemberDashboardView.vue"),
+      },
+      {
+        path: "simpanan",
+        name: "member-simpanan-list",
+        component: () => import("@/views/member/MemberSimpananView.vue"),
+      },
+      {
+        path: "simpanan/:id",
+        name: "member-simpanan-detail",
+        component: () => import("@/views/member/MemberSimpananDetailView.vue"),
+      },
+      {
+        path: "pinjaman",
+        name: "member-pinjaman-list",
+        component: () => import("@/views/member/MemberPinjamanView.vue"),
+      },
+      {
+        path: "pinjaman/:id",
+        name: "member-pinjaman-detail",
+        component: () => import("@/views/member/MemberPinjamanDetailView.vue"),
+      },
+      {
+        path: "shu",
+        name: "member-shu",
+        component: () => import("@/views/member/MemberSHUView.vue"),
+      },
+    ],
+  },
+
+  // --- RUTE 404 (Selalu di paling akhir) ---
   {
     path: "/:pathMatch(.*)*",
     name: "NotFound",
@@ -169,15 +242,22 @@ const router = createRouter({
   routes,
 });
 
-// Route guard tidak berubah
+// Route guard yang lebih pintar
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
-  const isPublicPage = to.path === "/login";
+  const memberAuthStore = useMemberAuthStore();
 
-  if (!isPublicPage && !authStore.isLoggedIn) {
+  if (to.meta.requiresAuth === "admin" && !authStore.isLoggedIn) {
+    // Jika rute butuh login admin tapi admin belum login, lempar ke login admin
     return next("/login");
   }
 
+  if (to.meta.requiresAuth === "member" && !memberAuthStore.isLoggedIn) {
+    // Jika rute butuh login anggota tapi anggota belum login, lempar ke login anggota
+    return next("/member/login");
+  }
+
+  // Jika semua aman, lanjutkan
   next();
 });
 

@@ -6,6 +6,8 @@ import "./assets/tailwind.css"; // <-- PASTIKAN INI ADA
 
 import Toast from "vue-toastification";
 import "vue-toastification/dist/index.css";
+import "./registerServiceWorker";
+import "./registerServiceWorker";
 
 const app = createApp(App);
 

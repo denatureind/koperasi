@@ -1,230 +1,235 @@
 <template>
-  <div
-    class="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 min-h-[calc(100vh-12rem)]"
-  >
+  <div class="p-4 md:p-6 bg-gray-50 min-h-screen">
+    <!-- Header Section -->
     <div
       class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8"
     >
       <div>
-        <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          <i class="fas fa-hand-holding-usd text-indigo-600"></i>
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-800 tracking-tight">
           Manajemen Pinjaman
         </h1>
-        <p class="text-gray-500 mt-1">
-          Kelola semua rekening pinjaman anggota koperasi
-        </p>
+        <p class="text-gray-600 mt-2">Kelola semua rekening pinjaman anggota</p>
       </div>
-
-      <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+      <div class="flex gap-3">
         <router-link
           to="/pinjaman/impor"
-          class="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm hover:shadow-md border border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white"
+          class="btn bg-blue-500 hover:bg-blue-600 text-white gap-2 transition-all shadow-md hover:shadow-lg border-0"
         >
-          <i class="fas fa-file-import mr-2"></i>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+              clip-rule="evenodd"
+            />
+          </svg>
           Impor Pinjaman
         </router-link>
+      </div>
+    </div>
 
-        <div class="relative w-full md:w-80">
+    <!-- Stats and Search -->
+    <div
+      class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8 overflow-hidden"
+    >
+      <div
+        class="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+      >
+        <div class="bg-blue-50 px-4 py-3 rounded-lg">
+          <p class="text-sm font-medium text-gray-700">
+            Menampilkan
+            <span class="font-bold text-blue-600">{{
+              filteredPinjaman.length
+            }}</span>
+            dari
+            <span class="font-bold text-blue-600">{{
+              pinjamanList.length
+            }}</span>
+            pinjaman
+          </p>
+        </div>
+
+        <div class="relative w-full md:w-auto">
           <div
             class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"
           >
-            <i class="fas fa-search text-gray-400"></i>
+            <svg
+              class="w-5 h-5 text-gray-400"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                clip-rule="evenodd"
+              ></path>
+            </svg>
           </div>
           <input
             type="text"
             v-model="searchTerm"
             placeholder="Cari nama atau no. pinjaman..."
-            class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 transition-all"
+            class="pl-10 pr-4 py-3 w-full md:w-80 rounded-lg border border-gray-300 bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all shadow-sm"
           />
-          <button
-            v-if="searchTerm"
-            @click="searchTerm = ''"
-            class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
-          >
-            <i class="fas fa-times"></i>
-          </button>
         </div>
       </div>
     </div>
 
+    <!-- Data Table -->
     <div
-      v-if="isLoading"
-      class="flex flex-col items-center justify-center py-16"
-    >
-      <div
-        class="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"
-      ></div>
-      <p class="text-gray-600 font-medium">Memuat data pinjaman...</p>
-    </div>
-
-    <div
-      v-else-if="filteredPinjaman.length === 0"
-      class="bg-white rounded-xl border border-gray-200 p-8 text-center"
-    >
-      <i class="fas fa-inbox text-4xl text-gray-300 mb-4"></i>
-      <h3 class="text-lg font-medium text-gray-700 mb-1">
-        Data tidak ditemukan
-      </h3>
-      <p class="text-gray-500 mb-6">
-        Tidak ada pinjaman yang sesuai dengan pencarian Anda
-      </p>
-      <button
-        @click="searchTerm = ''"
-        class="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-sm hover:shadow-md mx-auto"
-      >
-        <i class="fas fa-undo mr-2"></i> Reset Pencarian
-      </button>
-    </div>
-
-    <div
-      v-else
-      class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+      class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200"
     >
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+          <thead class="bg-gray-100">
             <tr>
               <th
                 scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider"
               >
-                No. Pinjaman
+                Anggota
               </th>
               <th
                 scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                class="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider"
               >
-                Nama Anggota
+                Jml. Pinjaman
               </th>
               <th
                 scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                class="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider"
               >
-                Jumlah Pinjaman
+                Total Bayar Pokok
               </th>
               <th
                 scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                class="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider"
               >
-                Tenor
+                Total Bayar Jasa
               </th>
               <th
                 scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                class="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider"
+              >
+                Sisa Pokok
+              </th>
+              <th
+                scope="col"
+                class="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider"
               >
                 Status
-              </th>
-              <th
-                scope="col"
-                class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Aksi
               </th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-if="isLoading">
+              <td colspan="6" class="px-6 py-8 text-center">
+                <div class="flex justify-center items-center">
+                  <div
+                    class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"
+                  ></div>
+                </div>
+                <p class="mt-4 text-gray-600">Memuat data pinjaman...</p>
+              </td>
+            </tr>
+            <tr v-else-if="filteredPinjaman.length === 0">
+              <td colspan="6" class="px-6 py-12 text-center">
+                <div
+                  class="mx-auto bg-blue-50 rounded-full p-4 w-16 h-16 flex items-center justify-center"
+                >
+                  <svg
+                    class="h-8 w-8 text-blue-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.5"
+                      d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    ></path>
+                  </svg>
+                </div>
+                <h3 class="mt-4 text-lg font-medium text-gray-800">
+                  Data tidak ditemukan
+                </h3>
+                <p class="mt-1 text-gray-600">
+                  Tidak ada pinjaman yang cocok dengan pencarian Anda
+                </p>
+              </td>
+            </tr>
             <tr
               v-for="pinjaman in filteredPinjaman"
               :key="pinjaman.id"
-              class="hover:bg-gray-50 transition-colors"
+              class="hover:bg-blue-50 transition-colors"
             >
               <td class="px-6 py-4 whitespace-nowrap">
                 <router-link
                   :to="`/pinjaman/data/${pinjaman.id}`"
-                  class="text-indigo-600 hover:text-indigo-800 font-medium hover:underline transition-colors"
+                  class="flex flex-col group"
                 >
-                  {{ pinjaman.no_pinjaman }}
-                </router-link>
-              </td>
-              <td class="px-6 py-4">
-                <router-link
-                  :to="`/data-master/anggota/${pinjaman.anggota_id}`"
-                  class="flex items-center group"
-                >
-                  <div
-                    class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center mr-3"
-                  >
-                    <i class="fas fa-user text-indigo-600 text-sm"></i>
-                  </div>
                   <span
-                    class="text-gray-800 group-hover:text-indigo-700 group-hover:underline transition-colors"
+                    class="text-base font-semibold text-gray-800 group-hover:text-blue-600 transition-colors"
                   >
                     {{ pinjaman.nama_anggota }}
                   </span>
+                  <span class="text-sm text-gray-600 mt-1">
+                    {{ pinjaman.no_pinjaman }}
+                  </span>
                 </router-link>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-800">
+              <td
+                class="px-6 py-4 whitespace-nowrap text-right text-base font-medium text-gray-800"
+              >
                 {{ formatUang(pinjaman.jumlah_pinjaman) }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span
-                  class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                >
-                  <i class="fas fa-calendar-alt mr-1.5"></i>
-                  {{ pinjaman.tenor }} bulan
+              <td
+                class="px-6 py-4 whitespace-nowrap text-right text-base text-gray-700"
+              >
+                {{ formatUang(pinjaman.total_bayar_pokok) }}
+              </td>
+              <td
+                class="px-6 py-4 whitespace-nowrap text-right text-base text-gray-700"
+              >
+                {{ formatUang(pinjaman.total_bayar_jasa) }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right">
+                <span class="text-base font-bold text-blue-600">
+                  {{ formatUang(pinjaman.sisa_pokok) }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-6 py-4 whitespace-nowrap text-center">
                 <span
                   :class="[
                     'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium',
-                    pinjaman.status === 'Aktif'
+                    pinjaman.status === 'aktif'
                       ? 'bg-green-100 text-green-800'
-                      : pinjaman.status === 'Lunas'
-                      ? 'bg-indigo-100 text-indigo-800'
-                      : 'bg-amber-100 text-amber-800',
+                      : 'bg-gray-100 text-gray-800',
                   ]"
                 >
-                  <i
-                    :class="[
-                      'mr-1.5 text-xs',
-                      pinjaman.status === 'Aktif'
-                        ? 'fas fa-check-circle'
-                        : pinjaman.status === 'Lunas'
-                        ? 'fas fa-flag-checkered'
-                        : 'fas fa-exclamation-triangle',
-                    ]"
-                  ></i>
+                  <svg
+                    v-if="pinjaman.status === 'aktif'"
+                    class="h-4 w-4 mr-1"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
                   {{ pinjaman.status }}
                 </span>
-              </td>
-              <td
-                class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
-              >
-                <div class="flex justify-end gap-2">
-                  <router-link
-                    :to="`/pinjaman/data/${pinjaman.id}`"
-                    class="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-3 py-1.5 rounded-md transition-colors"
-                  >
-                    <i class="fas fa-eye mr-1"></i> Detail
-                  </router-link>
-                </div>
               </td>
             </tr>
           </tbody>
         </table>
-      </div>
-    </div>
-
-    <div
-      v-if="!isLoading && filteredPinjaman.length > 0"
-      class="mt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-sm text-gray-500 border-t border-gray-200 pt-4"
-    >
-      <div>
-        Menampilkan
-        <span class="font-medium text-gray-700">{{
-          filteredPinjaman.length
-        }}</span>
-        dari
-        <span class="font-medium text-gray-700">{{ pinjamanList.length }}</span>
-        pinjaman
-      </div>
-      <div class="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
-        <i class="fas fa-clock text-indigo-500"></i>
-        <span
-          >Terakhir diperbarui:
-          {{ new Date().toLocaleTimeString("id-ID") }}</span
-        >
       </div>
     </div>
   </div>
@@ -233,10 +238,12 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import PinjamanService from "@/services/pinjaman.service.js";
+import { useToast } from "vue-toastification";
 
 const pinjamanList = ref([]);
 const isLoading = ref(true);
 const searchTerm = ref("");
+const toast = useToast();
 
 const filteredPinjaman = computed(() => {
   if (!searchTerm.value) {
@@ -256,6 +263,7 @@ const fetchAllPinjaman = async () => {
     const response = await PinjamanService.getAll();
     pinjamanList.value = response.data;
   } catch (error) {
+    toast.error("Gagal memuat data pinjaman.");
     console.error("Error fetching all pinjaman:", error);
   } finally {
     isLoading.value = false;
@@ -269,19 +277,3 @@ const formatUang = (angka) =>
 
 onMounted(fetchAllPinjaman);
 </script>
-
-<style scoped>
-/* Animasi untuk highlight pinjaman baru */
-@keyframes highlight {
-  0% {
-    background-color: rgba(99, 102, 241, 0.2);
-  }
-  100% {
-    background-color: transparent;
-  }
-}
-
-.highlight-row {
-  animation: highlight 1.5s ease;
-}
-</style>

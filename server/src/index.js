@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs'; // <-- Import 'fs' untuk file system
+import tokoRoutes from './routes/tokoRoutes.js'; // <-- IMPORT BARU
+
 
 // --- BLOK DEBUGGING ---
 const __filename = fileURLToPath(import.meta.url);
@@ -36,8 +38,8 @@ import importRoutes from './routes/importRoutes.js';
 import jenisPinjamanRoutes from './routes/jenisPinjamanRoutes.js';
 import periodeRoutes from './routes/periodeRoutes.js';
 import jurnalRoutes from './routes/jurnalRoutes.js'; // <-- IMPORT BARU
-
-
+import dashboardRoutes from './routes/dashboardRoutes.js';
+import memberRoutes from './routes/memberRoutes.js';
 
 
 // Inisialisasi aplikasi express
@@ -65,6 +67,10 @@ app.use('/api/import', importRoutes);
 app.use('/api/jenis-pinjaman', jenisPinjamanRoutes);
 app.use('/api/periode', periodeRoutes);
 app.use('/api/jurnal', jurnalRoutes); // <-- GUNAKAN ROUTE BARU
+app.use('/api/toko', tokoRoutes); // <-- GUNAKAN ROUTE BARU
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/member', memberRoutes);
+
 
 
 // Mendefinisikan PORT dari file .env

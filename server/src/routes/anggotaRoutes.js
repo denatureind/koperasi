@@ -1,10 +1,13 @@
 import express from 'express';
+import { loginAnggota, createAnggotaAuth, resetAnggotaPassword  } from '../controllers/anggotaAuthController.js'; // <-- Tambahkan createAnggotaAuth
+
 import { 
   createAnggota, 
   getAllAnggota, 
   getAnggotaById,
   updateAnggota,     // <-- Import fungsi baru
   deleteAnggota      // <-- Import fungsi baru
+  
 } from '../controllers/anggotaController.js';
 
 const router = express.Router();
@@ -13,6 +16,10 @@ const router = express.Router();
 router.get('/', getAllAnggota);
 router.get('/:id', getAnggotaById);
 router.post('/', createAnggota);
+router.post('/create', createAnggotaAuth); // <-- ROUTE BARU
+router.put('/reset-password', resetAnggotaPassword);
+
+
 
 // ROUTE BARU
 // PUT /api/anggota/:id -> Menjalankan fungsi updateAnggota

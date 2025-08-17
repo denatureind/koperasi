@@ -40,12 +40,29 @@
             >
           </div>
         </div>
-        <router-link
-          :to="`/data-master/anggota/edit/${memberId}`"
-          class="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm hover:shadow-md"
-        >
-          <i class="fas fa-edit"></i><span>Edit Anggota</span>
-        </router-link>
+        <div class="flex flex-wrap gap-3">
+          <button
+            @click="openAuthModal('create')"
+            class="btn btn-outline btn-primary"
+          >
+            <i class="fas fa-key"></i>
+            <span>Buat Akun Login</span>
+          </button>
+          <button
+            @click="openAuthModal('reset')"
+            class="btn btn-outline btn-secondary"
+          >
+            <i class="fas fa-sync-alt"></i>
+            <span>Reset Password</span>
+          </button>
+          <router-link
+            :to="`/data-master/anggota/edit/${memberId}`"
+            class="btn btn-primary"
+          >
+            <i class="fas fa-edit"></i>
+            <span>Edit Anggota</span>
+          </router-link>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -140,7 +157,6 @@
             </div>
           </form>
         </div>
-
         <div
           v-if="rekeningSimpanan.length > 0"
           class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm"
@@ -207,97 +223,54 @@
           <p>Belum ada rekening simpanan</p>
         </div>
       </div>
-
-      <div class="mb-10">
-        <div
-          class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6"
-        >
-          <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <i class="fas fa-hand-holding-usd text-amber-500"></i> Rekening
-            Pinjaman
-          </h2>
-          <router-link
-            :to="`/pinjaman/ajukan/${memberId}`"
-            class="flex items-center gap-2 bg-gradient-to-r from-amber-600 to-amber-700 text-white px-4 py-2 rounded-lg font-medium"
-          >
-            <i class="fas fa-plus"></i><span>Ajukan Pinjaman</span>
-          </router-link>
-        </div>
-        <div
-          v-if="rekeningPinjaman.length > 0"
-          class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm"
-        >
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                >
-                  No. Pinjaman
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                >
-                  Jumlah
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                >
-                  Sisa
-                </th>
-                <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                >
-                  Status
-                </th>
-                <th
-                  class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase"
-                >
-                  Aksi
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr
-                v-for="pinjaman in rekeningPinjaman"
-                :key="pinjaman.id"
-                class="hover:bg-gray-50"
-              >
-                <td class="px-6 py-4 text-sm text-gray-500">
-                  {{ pinjaman.no_pinjaman }}
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-500">
-                  {{ formatUang(pinjaman.jumlah_pinjaman) }}
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-500">
-                  {{ formatUang(pinjaman.sisa_pokok) }}
-                </td>
-                <td class="px-6 py-4">
-                  <span
-                    class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
-                    >{{ pinjaman.status }}</span
-                  >
-                </td>
-                <td class="px-6 py-4 text-right text-sm font-medium">
-                  <router-link
-                    :to="`/pinjaman/data/${pinjaman.id}`"
-                    class="text-indigo-600 hover:text-indigo-800"
-                  >
-                    <i class="fas fa-eye mr-1"></i> Detail
-                  </router-link>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div
-          v-else
-          class="bg-white rounded-xl border border-gray-200 p-8 text-center"
-        >
-          <p>Tidak ada pinjaman aktif</p>
-        </div>
-      </div>
     </div>
+
+    <div v-else class="text-center py-16">
+      <h2 class="text-xl font-bold text-gray-800">Anggota tidak ditemukan</h2>
+      <p class="mt-2 text-gray-600">
+        Silakan periksa kembali tautan yang Anda tuju.
+      </p>
+    </div>
+
+    <dialog ref="authModalRef" id="auth_modal" class="modal">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg text-gray-800">
+          {{ modalMode === "create" ? "Buat Akun Login" : "Reset Password" }}
+          untuk {{ anggota?.nama }}
+        </h3>
+        <form @submit.prevent="handleAuthSubmit" class="py-4 space-y-4">
+          <div class="form-control" v-if="modalMode === 'create'">
+            <label class="label"
+              ><span class="label-text">Username</span></label
+            >
+            <input
+              type="text"
+              v-model="authForm.username"
+              class="input input-bordered w-full"
+              required
+            />
+          </div>
+          <div class="form-control">
+            <label class="label"
+              ><span class="label-text">Password Baru</span></label
+            >
+            <input
+              type="password"
+              v-model="authForm.password"
+              class="input input-bordered w-full"
+              placeholder="Masukkan password baru"
+              required
+            />
+          </div>
+          <div class="modal-action mt-6">
+            <button type="button" class="btn" @click="closeAuthModal">
+              Batal
+            </button>
+            <button type="submit" class="btn btn-primary">Simpan</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
   </div>
 </template>
 
@@ -322,7 +295,9 @@ const showForm = ref(false);
 const isLoading = ref(true);
 const rekeningBaru = ref({ jenis_simpanan: "" });
 
-// Menghitung total untuk ditampilkan di kartu statistik
+const authModalRef = ref(null);
+const modalMode = ref("create");
+
 const totalSimpanan = computed(() =>
   rekeningSimpanan.value.reduce((sum, item) => sum + parseFloat(item.saldo), 0)
 );
@@ -332,6 +307,12 @@ const totalPinjaman = computed(() =>
     0
   )
 );
+
+const authForm = ref({
+  anggota_id: parseInt(memberId),
+  username: "",
+  password: "",
+});
 
 const formatUang = (angka) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(
@@ -381,9 +362,40 @@ const handleBuatRekening = async () => {
   }
 };
 
+const openAuthModal = (mode) => {
+  modalMode.value = mode;
+  authForm.value.password = "";
+  if (mode === "create") {
+    authForm.value.username = anggota.value.kode_anggota.toLowerCase();
+  }
+  if (authModalRef.value) {
+    authModalRef.value.showModal();
+  }
+};
+
+const closeAuthModal = () => {
+  if (authModalRef.value) {
+    authModalRef.value.close();
+  }
+};
+
+const handleAuthSubmit = async () => {
+  try {
+    if (modalMode.value === "create") {
+      await AnggotaService.createLogin(authForm.value);
+      toast.success(`Akun login untuk ${anggota.value.nama} berhasil dibuat.`);
+    } else {
+      await AnggotaService.resetPassword({
+        anggota_id: authForm.value.anggota_id,
+        password: authForm.value.password,
+      });
+      toast.success(`Password untuk ${anggota.value.nama} berhasil direset.`);
+    }
+    closeAuthModal();
+  } catch (error) {
+    toast.error(error.response?.data?.message || "Gagal memproses permintaan.");
+  }
+};
+
 onMounted(fetchAllData);
 </script>
-
-<style scoped>
-/* Anda tidak perlu style di sini karena Tailwind sudah menanganinya */
-</style>

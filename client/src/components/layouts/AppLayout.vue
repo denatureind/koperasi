@@ -17,7 +17,7 @@
               <div class="font-bold text-xl tracking-wide">
                 Bina<span class="text-indigo-600 font-extrabold">Makmur</span>
               </div>
-              <div class="text-xs text-gray-500">Koperasi Digital</div>
+              <div class="text-xs text-gray-500">Koperasi SMAN 1 Majenang</div>
             </div>
           </div>
 
@@ -97,22 +97,6 @@
           <!-- User Controls -->
           <div class="flex items-center space-x-4">
             <!-- Period Selector -->
-            <div v-if="isLaporanActive" class="form-control w-48">
-              <select
-                v-model="periodeTerpilih"
-                @change="updatePeriode"
-                class="select select-bordered select-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 transition-all"
-              >
-                <option disabled :value="null">Pilih Periode Laporan</option>
-                <option
-                  v-for="p in laporanStore.periodeList"
-                  :key="p.id"
-                  :value="p.id"
-                >
-                  {{ p.nama_periode }}
-                </option>
-              </select>
-            </div>
 
             <!-- User Info -->
             <div class="hidden md:flex items-center text-sm text-gray-700">
@@ -268,6 +252,22 @@
           </h1>
           <div class="w-16 h-1 bg-indigo-600 rounded-full mt-2"></div>
         </div>
+        <div v-if="isLaporanActive" class="form-control w-48">
+          <select
+            v-model="periodeTerpilih"
+            @change="updatePeriode"
+            class="select select-bordered select-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 transition-all"
+          >
+            <option disabled :value="null">Pilih Periode Laporan</option>
+            <option
+              v-for="p in laporanStore.periodeList"
+              :key="p.id"
+              :value="p.id"
+            >
+              {{ p.nama_periode }}
+            </option>
+          </select>
+        </div>
 
         <!-- Sub Navigation -->
         <div class="sub-nav-container mb-6">
@@ -291,6 +291,7 @@
           <nav v-if="isPembukuanActive" class="sub-nav">
             <router-link to="/pembukuan/kode-akun">Kode Akun</router-link>
             <router-link to="/pembukuan/jurnal-umum">Jurnal Umum</router-link>
+            <router-link to="/pembukuan/buku-besar">Buku Besar</router-link>
             <router-link to="/pembukuan/periode">Manajemen Periode</router-link>
             <router-link to="/pembukuan/konfigurasi-shu"
               >Konfigurasi SHU</router-link
@@ -301,6 +302,9 @@
             <router-link to="/laporan/neraca">Laporan Neraca</router-link>
             <router-link to="/laporan/laba-rugi">Laporan Laba Rugi</router-link>
             <router-link to="/laporan/shu">Perhitungan SHU</router-link>
+            <router-link to="/toko"
+              ><i class="fas fa-store"></i> Toko</router-link
+            >
           </nav>
         </div>
 
@@ -319,7 +323,7 @@
           Majenang
         </p>
         <p class="mt-1 text-gray-600">
-          Developed <i class="fas fa-heart text-rose-500"></i> by EmbuN
+          Developed with <i class="fas fa-heart text-rose-500"></i> by EmbuN
         </p>
       </div>
     </footer>
@@ -396,7 +400,9 @@ const isDataMasterActive = computed(() =>
 const isSimpananActive = computed(() => route.path.startsWith("/simpanan"));
 const isPinjamanActive = computed(() => route.path.startsWith("/pinjaman"));
 const isPembukuanActive = computed(() => route.path.startsWith("/pembukuan"));
-const isLaporanActive = computed(() => route.path.startsWith("/laporan"));
+const isLaporanActive = computed(
+  () => route.path.startsWith("/laporan") || route.path.startsWith("/toko")
+);
 </script>
 
 <style scoped>
