@@ -6,17 +6,15 @@ import { useMemberAuthStore } from "@/stores/memberAuth.store.js";
 import AppLayout from "@/components/layouts/AppLayout.vue";
 import MemberLayout from "@/components/layouts/MemberLayout.vue";
 
+// Import Halaman Baru
+import SHUPemerataanView from "@/views/laporan/SHUPemerataanView.vue";
+
 const routes = [
   // --- RUTE PUBLIK (Boleh diakses siapa saja) ---
   {
     path: "/login",
     name: "login",
     component: () => import("@/views/auth/LoginView.vue"),
-  },
-  {
-    path: "/member/login",
-    name: "member-login",
-    component: () => import("@/views/auth/MemberLoginView.vue"),
   },
 
   // --- RUTE ADMIN (Dilindungi, butuh login admin) ---
@@ -30,9 +28,6 @@ const routes = [
         name: "home",
         component: () => import("@/views/HomeView.vue"),
       },
-
-      // --- GRUP DATA MASTER ---
-      // BARIS YANG HILANG & DIPERBAIKI ADA DI SINI
       { path: "data-master", redirect: "/data-master/anggota" },
       {
         path: "data-master/anggota",
@@ -59,8 +54,6 @@ const routes = [
         name: "anggota-impor",
         component: () => import("@/views/anggota/ImportAnggotaView.vue"),
       },
-
-      // --- GRUP SIMPANAN ---
       { path: "simpanan", redirect: "/simpanan/rekening" },
       {
         path: "simpanan/rekening",
@@ -87,8 +80,6 @@ const routes = [
         name: "simpanan-impor-saldo",
         component: () => import("@/views/simpanan/ImportSaldoSimpanan.vue"),
       },
-
-      // --- GRUP PINJAMAN ---
       { path: "pinjaman", redirect: "/pinjaman/data" },
       {
         path: "pinjaman/data",
@@ -120,8 +111,6 @@ const routes = [
         name: "pinjaman-impor",
         component: () => import("@/views/pinjaman/ImportPinjamanView.vue"),
       },
-
-      // --- GRUP PEMBUKUAN ---
       { path: "pembukuan", redirect: "/pembukuan/kode-akun" },
       {
         path: "pembukuan/kode-akun",
@@ -158,8 +147,13 @@ const routes = [
         name: "konfigurasi-shu",
         component: () => import("@/views/pembukuan/KonfigurasiSHUView.vue"),
       },
-
-      // --- GRUP LAPORAN ---
+      // --- PERBAIKAN & PENEMPATAN RUTE BARU YANG BENAR ---
+      {
+        path: "pembukuan/input-shu",
+        name: "InputSHU",
+        component: SHUPemerataanView, // Menggunakan komponen yang sudah kita buat
+        meta: { title: "Input SHU Pemerataan" },
+      },
       { path: "laporan", redirect: "/laporan/neraca" },
       {
         path: "laporan/neraca",
@@ -176,11 +170,9 @@ const routes = [
         name: "laporan-shu",
         component: () => import("@/views/laporan/SHUView.vue"),
       },
-
-      // --- GRUP TOKO ---
       {
         path: "toko",
-        redirect: "/toko/input-belanja", // Redirect dari /toko ke halaman default
+        redirect: "/toko/input-belanja",
       },
       {
         path: "toko/input-belanja",
@@ -242,22 +234,19 @@ const router = createRouter({
   routes,
 });
 
-// Route guard yang lebih pintar
+// Route guard
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
   const memberAuthStore = useMemberAuthStore();
 
   if (to.meta.requiresAuth === "admin" && !authStore.isLoggedIn) {
-    // Jika rute butuh login admin tapi admin belum login, lempar ke login admin
     return next("/login");
   }
 
   if (to.meta.requiresAuth === "member" && !memberAuthStore.isLoggedIn) {
-    // Jika rute butuh login anggota tapi anggota belum login, lempar ke login anggota
-    return next("/member/login");
+    return next("/login");
   }
 
-  // Jika semua aman, lanjutkan
   next();
 });
 

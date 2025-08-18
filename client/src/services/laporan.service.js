@@ -42,4 +42,14 @@ export default {
       responseType: "blob", // Penting untuk unduhan file
     });
   },
+
+  // --- FUNGSI BARU ---
+  exportSHU(periodeId, jasaBelanja) {
+    return axios.get(
+      `${API_URL}/shu/export?periode_id=${periodeId}&jasa_belanja_dikembalikan=${jasaBelanja}`,
+      {
+        responseType: "blob", // Penting untuk unduhan file
+      }
+    );
+  },
 };

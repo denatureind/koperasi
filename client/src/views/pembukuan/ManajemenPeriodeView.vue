@@ -1,58 +1,68 @@
 <template>
-  <div class="p-1">
-    <div class="card bg-base-100 shadow-sm border border-base-200">
-      <div class="card-body">
-        <h1 class="text-2xl font-bold text-gray-800">
+  <div class="p-6 space-y-6">
+    <!-- Card Container -->
+    <div
+      class="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200"
+    >
+      <div class="p-6">
+        <h1 class="text-3xl font-semibold text-gray-900">
           Manajemen Periode Akuntansi
         </h1>
-        <p class="text-gray-500 mt-1 mb-6">
+        <p class="text-gray-600 mt-2 mb-6">
           Kelola periode pembukuan dan jalankan proses tutup buku tahunan.
         </p>
 
-        <div class="overflow-x-auto">
-          <table class="table table-zebra">
+        <!-- Table Container -->
+        <div class="overflow-x-auto bg-gray-50 rounded-lg shadow-sm">
+          <table class="min-w-full table-auto">
             <thead>
-              <tr>
-                <th class="bg-base-200">Nama Periode</th>
-                <th class="bg-base-200">Tanggal Mulai</th>
-                <th class="bg-base-200">Tanggal Selesai</th>
-                <th class="bg-base-200">Status</th>
-                <th class="bg-base-200 text-right">Aksi</th>
+              <tr class="text-left bg-gray-100 text-gray-600">
+                <th class="px-4 py-3 text-sm font-medium">Nama Periode</th>
+                <th class="px-4 py-3 text-sm font-medium">Tanggal Mulai</th>
+                <th class="px-4 py-3 text-sm font-medium">Tanggal Selesai</th>
+                <th class="px-4 py-3 text-sm font-medium">Status</th>
+                <th class="px-4 py-3 text-sm font-medium text-right">Aksi</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="periode in periodeList" :key="periode.id">
-                <td class="font-medium">{{ periode.nama_periode }}</td>
-                <td>
+              <tr
+                v-for="periode in periodeList"
+                :key="periode.id"
+                class="border-t border-gray-200 hover:bg-gray-50"
+              >
+                <td class="px-4 py-3 text-sm font-medium text-gray-800">
+                  {{ periode.nama_periode }}
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600">
                   {{ new Date(periode.tgl_mulai).toLocaleDateString("id-ID") }}
                 </td>
-                <td>
+                <td class="px-4 py-3 text-sm text-gray-600">
                   {{
                     new Date(periode.tgl_selesai).toLocaleDateString("id-ID")
                   }}
                 </td>
-                <td>
+                <td class="px-4 py-3">
                   <span
                     :class="[
-                      'badge',
+                      'inline-block py-1 px-3 text-xs font-semibold rounded-full',
                       periode.status === 'open'
-                        ? 'badge-success'
-                        : 'badge-ghost',
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-600',
                     ]"
                   >
                     {{ periode.status }}
                   </span>
                 </td>
-                <td class="text-right">
+                <td class="px-4 py-3 text-sm text-right">
                   <button
                     v-if="periode.status === 'open'"
                     @click="handleTutupBuku(periode)"
-                    class="btn btn-error btn-sm"
+                    class="btn btn-sm bg-red-600 hover:bg-red-700 text-white rounded-md px-4 py-2 flex items-center"
                     :disabled="isLoading"
                   >
                     <span
                       v-if="isLoading"
-                      class="loading loading-spinner loading-xs"
+                      class="loading loading-spinner loading-xs mr-2"
                     ></span>
                     Tutup Buku
                   </button>

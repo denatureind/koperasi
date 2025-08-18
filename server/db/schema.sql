@@ -43,3 +43,16 @@ CREATE TABLE loans (
     request_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- Tanggal pengajuan
     approval_date TIMESTAMP WITH TIME ZONE -- Tanggal disetujui (bisa NULL)
 );
+
+-- Tabel untuk menyimpan SHU Pemerataan
+CREATE TABLE shu_pemerataan (
+    id SERIAL PRIMARY KEY,
+    anggota_id INTEGER NOT NULL REFERENCES anggota(id) ON DELETE CASCADE,
+    periode_id INTEGER NOT NULL REFERENCES periode_akuntansi(id) ON DELETE CASCADE,
+    jumlah DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    -- Pastikan tidak ada duplikasi data per anggota per periode
+    UNIQUE(anggota_id, periode_id)
+);
+
+-- Menambahkan indeks untuk pencarian yang lebih cepat
+CREATE INDEX idx_shu_pemerataan_periode_anggota ON shu_pemerataan (periode_id, anggota_id);

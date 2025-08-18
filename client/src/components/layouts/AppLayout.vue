@@ -296,6 +296,9 @@
             <router-link to="/pembukuan/konfigurasi-shu"
               >Konfigurasi SHU</router-link
             >
+            <router-link to="/pembukuan/input-shu">
+              Input SHU Pemerataan
+            </router-link>
           </nav>
 
           <nav v-if="isLaporanActive" class="sub-nav">

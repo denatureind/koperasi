@@ -2,6 +2,7 @@
   <div
     class="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 min-h-[calc(100vh-12rem)]"
   >
+    <!-- Header Halaman -->
     <div
       class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-gray-200"
     >
@@ -14,8 +15,16 @@
           Kalkulator untuk menghitung dan mengalokasikan SHU periode berjalan.
         </p>
       </div>
-
+      <!-- Tombol Ekspor -->
       <div class="flex items-center gap-3">
+        <button
+          @click="exportToExcel"
+          :disabled="!shuData"
+          class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <i class="fas fa-file-excel"></i>
+          <span>Ekspor Excel</span>
+        </button>
         <div
           class="bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100"
         >
@@ -26,6 +35,7 @@
       </div>
     </div>
 
+    <!-- Input Jasa Belanja -->
     <div
       class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8"
     >
@@ -57,11 +67,7 @@
             class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md disabled:opacity-70 disabled:cursor-not-allowed w-full md:w-auto"
           >
             <div class="flex items-center gap-2 justify-center">
-              <span
-                v-if="isLoading"
-                class="loading loading-spinner loading-sm"
-              ></span>
-              <i v-else class="fas fa-calculator"></i>
+              <i v-if="!isLoading" class="fas fa-calculator"></i>
               <span>{{
                 isLoading ? "Menghitung..." : "Mulai Hitung SHU"
               }}</span>
@@ -71,7 +77,9 @@
       </div>
     </div>
 
+    <!-- Tampilan Hasil SHU -->
     <div v-if="shuData" class="space-y-6">
+      <!-- KARTU RINCIAN ALOKASI -->
       <div
         class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
       >
@@ -81,10 +89,10 @@
           </h3>
           <p class="text-gray-500 text-sm mt-1">
             Total Saldo Laba:
-            <span class="font-bold">{{ formatUang(shuData.saldoLaba) }}</span>
+            <span class="font-bold">{{ formatRupiah(shuData.saldoLaba) }}</span>
           </p>
         </div>
-        <div class="px-6 py-4 space-y-4">
+        <div class="px-6 py-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div
               class="flex justify-between items-center p-3 bg-green-50 rounded-lg"
@@ -96,10 +104,9 @@
                 </div>
               </div>
               <div class="font-bold text-green-700">
-                {{ formatUang(shuData.distribusi.anggota) }}
+                {{ formatRupiah(shuData.distribusi.anggota) }}
               </div>
             </div>
-
             <div
               class="flex justify-between items-center p-3 bg-blue-50 rounded-lg"
             >
@@ -110,10 +117,9 @@
                 </div>
               </div>
               <div class="font-bold text-blue-700">
-                {{ formatUang(shuData.distribusi.cadangan) }}
+                {{ formatRupiah(shuData.distribusi.cadangan) }}
               </div>
             </div>
-
             <div
               class="flex justify-between items-center p-3 bg-purple-50 rounded-lg"
             >
@@ -124,10 +130,9 @@
                 </div>
               </div>
               <div class="font-bold text-purple-700">
-                {{ formatUang(shuData.distribusi.danaSosial) }}
+                {{ formatRupiah(shuData.distribusi.danaSosial) }}
               </div>
             </div>
-
             <div
               class="flex justify-between items-center p-3 bg-amber-50 rounded-lg"
             >
@@ -138,77 +143,14 @@
                 </div>
               </div>
               <div class="font-bold text-amber-700">
-                {{ formatUang(shuData.distribusi.pengurus) }}
+                {{ formatRupiah(shuData.distribusi.pengurus) }}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div
-          class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
-        >
-          <div class="px-6 py-5">
-            <div class="flex items-center gap-3">
-              <div
-                class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center"
-              >
-                <i class="fas fa-wallet text-green-600"></i>
-              </div>
-              <div>
-                <p class="text-gray-500 text-sm">
-                  Dana untuk Anggota (via Simpanan)
-                </p>
-                <span class="text-xl font-bold text-green-600">
-                  {{ formatUang(shuData.danaUntukAnggotaViaSimpanan) }}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
-        >
-          <div class="px-6 py-5">
-            <div class="flex items-center gap-3">
-              <div
-                class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center"
-              >
-                <i class="fas fa-chart-line text-blue-600"></i>
-              </div>
-              <div>
-                <p class="text-gray-500 text-sm">Total Poin Simpanan</p>
-                <span class="text-xl font-bold text-blue-600">
-                  {{ shuData.totalPoinSimpananKeseluruhan.toFixed(2) }}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl shadow-lg overflow-hidden text-white"
-        >
-          <div class="px-6 py-5">
-            <div class="flex items-center gap-3">
-              <div
-                class="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center"
-              >
-                <i class="fas fa-percentage text-white"></i>
-              </div>
-              <div>
-                <p>Nilai per Poin (Indeks)</p>
-                <span class="text-xl font-bold">
-                  {{ formatUang(shuData.indeksPoin) }}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      <!-- Tabel Rincian Anggota -->
       <div
         class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
       >
@@ -217,22 +159,16 @@
             Rincian SHU per Anggota
           </h3>
         </div>
-
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
                 <th
+                  @click="toggleSort"
                   scope="col"
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-200"
                 >
-                  Anggota
-                </th>
-                <th
-                  scope="col"
-                  class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Total Poin
+                  Anggota <i :class="sortIcon" class="fas ml-2"></i>
                 </th>
                 <th
                   scope="col"
@@ -256,74 +192,86 @@
                   scope="col"
                   class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Total SHU
+                  SHU Pemerataan
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-indigo-50 text-indigo-700"
+                >
+                  Total Diterima
                 </th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr
-                v-for="item in shuData.rincianAnggota"
-                :key="item.anggota_id"
+                v-for="anggota in sortedRincianAnggota"
+                :key="anggota.anggota_id"
                 class="hover:bg-gray-50 transition-colors"
               >
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <div
-                      class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center mr-3"
-                    >
-                      <i class="fas fa-user text-indigo-600 text-sm"></i>
-                    </div>
-                    <div>
-                      <div class="font-medium text-gray-900">
-                        {{ item.nama }}
-                      </div>
-                      <div class="text-sm text-gray-500">
-                        {{ item.kode_anggota }}
-                      </div>
-                    </div>
+                  <div class="font-medium text-gray-900">
+                    {{ anggota.nama }}
+                  </div>
+                  <div class="text-sm text-gray-500">
+                    {{ anggota.kode_anggota }}
                   </div>
                 </td>
-
-                <td class="px-6 py-4 whitespace-nowrap text-right font-bold">
-                  {{ item.totalPoin.toFixed(2) }}
-                </td>
-
                 <td class="px-6 py-4 whitespace-nowrap text-right">
-                  {{ formatUang(item.shuTotalSimpanan) }}
+                  {{ formatRupiah(anggota.shuTotalSimpanan) }}
                 </td>
-
                 <td class="px-6 py-4 whitespace-nowrap text-right">
-                  {{ formatUang(item.shuDariPinjaman) }}
+                  {{ formatRupiah(anggota.shuDariPinjaman) }}
                 </td>
-
                 <td class="px-6 py-4 whitespace-nowrap text-right">
-                  {{ formatUang(item.shuDariBelanja) }}
+                  {{ formatRupiah(anggota.shuDariBelanja) }}
                 </td>
-
+                <td class="px-6 py-4 whitespace-nowrap text-right">
+                  {{ formatRupiah(anggota.shuPemerataan) }}
+                </td>
                 <td
-                  class="px-6 py-4 whitespace-nowrap text-right font-bold text-green-600"
+                  class="px-6 py-4 whitespace-nowrap text-right font-bold text-indigo-600 bg-indigo-50"
                 >
-                  {{ formatUang(item.shuTotalDiterima) }}
+                  {{ formatRupiah(anggota.shuTotalDiterima) }}
                 </td>
               </tr>
             </tbody>
+            <tfoot class="bg-gray-100">
+              <tr>
+                <td
+                  class="px-6 py-3 text-left text-sm font-bold text-gray-800 uppercase"
+                >
+                  Total Keseluruhan
+                </td>
+                <td
+                  class="px-6 py-3 text-right text-sm font-bold text-gray-800"
+                >
+                  {{ formatRupiah(totals.shuSimpanan) }}
+                </td>
+                <td
+                  class="px-6 py-3 text-right text-sm font-bold text-gray-800"
+                >
+                  {{ formatRupiah(totals.shuPinjaman) }}
+                </td>
+                <td
+                  class="px-6 py-3 text-right text-sm font-bold text-gray-800"
+                >
+                  {{ formatRupiah(totals.shuBelanja) }}
+                </td>
+                <td
+                  class="px-6 py-3 text-right text-sm font-bold text-gray-800"
+                >
+                  {{ formatRupiah(totals.shuPemerataan) }}
+                </td>
+                <td
+                  class="px-6 py-3 text-right text-sm font-bold text-indigo-700 bg-indigo-100"
+                >
+                  {{ formatRupiah(totals.shuTotal) }}
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
-    </div>
-
-    <div
-      v-if="!shuData && !isLoading"
-      class="bg-white rounded-xl border border-gray-200 p-8 text-center"
-    >
-      <i class="fas fa-calculator text-4xl text-gray-300 mb-4"></i>
-      <h3 class="text-lg font-medium text-gray-700 mb-1">
-        Siap Menghitung SHU
-      </h3>
-      <p class="text-gray-500 mb-6">
-        Masukkan jumlah Jasa Belanja dan klik "Mulai Hitung SHU" untuk memulai
-        perhitungan
-      </p>
     </div>
   </div>
 </template>
@@ -339,16 +287,66 @@ const isLoading = ref(false);
 const laporanStore = useLaporanStore();
 const toast = useToast();
 const jasaBelanjaInput = ref(0);
+const sortOrder = ref("asc"); // 'asc' untuk A-Z, 'desc' untuk Z-A
 
 const currentPeriodName = computed(() => {
   if (!laporanStore.periodeAktifId || !laporanStore.periodeList.length)
     return "Belum dipilih";
-
   const period = laporanStore.periodeList.find(
     (p) => p.id === laporanStore.periodeAktifId
   );
-
   return period ? period.nama_periode : "Belum dipilih";
+});
+
+// FUNGSI BARU UNTUK SORTIR
+const sortedRincianAnggota = computed(() => {
+  if (!shuData.value || !shuData.value.rincianAnggota) return [];
+  // Buat salinan array agar tidak mengubah data asli
+  const dataToSort = [...shuData.value.rincianAnggota];
+  return dataToSort.sort((a, b) => {
+    if (sortOrder.value === "asc") {
+      return a.nama.localeCompare(b.nama);
+    } else {
+      return b.nama.localeCompare(a.nama);
+    }
+  });
+});
+
+const sortIcon = computed(() => {
+  return sortOrder.value === "asc" ? "fa-sort-alpha-down" : "fa-sort-alpha-up";
+});
+
+const toggleSort = () => {
+  sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
+};
+
+const totals = computed(() => {
+  if (!shuData.value || !shuData.value.rincianAnggota) {
+    return {
+      shuSimpanan: 0,
+      shuPinjaman: 0,
+      shuBelanja: 0,
+      shuPemerataan: 0,
+      shuTotal: 0,
+    };
+  }
+  return shuData.value.rincianAnggota.reduce(
+    (acc, item) => {
+      acc.shuSimpanan += item.shuTotalSimpanan || 0;
+      acc.shuPinjaman += item.shuDariPinjaman || 0;
+      acc.shuBelanja += item.shuDariBelanja || 0;
+      acc.shuPemerataan += item.shuPemerataan || 0;
+      acc.shuTotal += item.shuTotalDiterima || 0;
+      return acc;
+    },
+    {
+      shuSimpanan: 0,
+      shuPinjaman: 0,
+      shuBelanja: 0,
+      shuPemerataan: 0,
+      shuTotal: 0,
+    }
+  );
 });
 
 const fetchSHU = async () => {
@@ -356,7 +354,7 @@ const fetchSHU = async () => {
     toast.error("Silakan pilih periode laporan terlebih dahulu.");
     return;
   }
-  if (jasaBelanjaInput.value <= 0) {
+  if (jasaBelanjaInput.value < 0) {
     toast.error("Silakan masukkan jumlah Jasa Belanja yang valid.");
     return;
   }
@@ -377,34 +375,39 @@ const fetchSHU = async () => {
   }
 };
 
-const formatUang = (angka) =>
+// FUNGSI BARU UNTUK EKSPOR
+const exportToExcel = async () => {
+  if (!shuData.value) {
+    toast.error(
+      "Tidak ada data untuk diekspor. Silakan hitung SHU terlebih dahulu."
+    );
+    return;
+  }
+  try {
+    const response = await LaporanService.exportSHU(
+      laporanStore.periodeAktifId,
+      jasaBelanjaInput.value
+    );
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `Laporan_SHU_${currentPeriodName.value}.xlsx`
+    );
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    toast.success("Laporan berhasil diunduh.");
+  } catch (error) {
+    toast.error("Gagal mengunduh laporan.");
+  }
+};
+
+const formatRupiah = (angka) =>
   new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
     minimumFractionDigits: 0,
   }).format(angka || 0);
 </script>
-
-<style scoped>
-.loading {
-  border: 2px solid #e5e7eb;
-  border-top: 2px solid #4f46e5;
-  border-radius: 50%;
-  width: 1rem;
-  height: 1rem;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-tbody tr:nth-child(odd) {
-  background-color: #f9fafb;
-}
-</style>

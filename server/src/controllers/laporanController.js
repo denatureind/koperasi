@@ -139,233 +139,181 @@ export const getLabaRugi = async (req, res) => {
     }
 };
 
-/**
- * Fungsi untuk menghitung SHU (VERSI PERBAIKAN FINAL)
- * Fungsi untuk menghitung SHU (VERSI DENGAN SHU BELANJA)
- * Menghitung Sisa Hasil Usaha (SHU) berdasarkan data periode, konfigurasi,
- * dan transaksi anggota. Menggunakan transaksi database untuk memastikan integritas data.
- */
+
+// =================================================================
+// FUNGSI hitungSHU DENGAN PENAMBAHAN SHU PEMERATAAN
+// =================================================================
 export const hitungSHU = async (req, res) => {
-  const { periode_id, jasa_belanja_dikembalikan } = req.query;
+    const { periode_id, jasa_belanja_dikembalikan } = req.query;
 
-  if (!periode_id) {
-    return res.status(400).json({ message: "ID Periode dibutuhkan" });
-  }
-  const client = await db.connect();
-
-  try {
-    await client.query("BEGIN");
-
-    // 1. Ambil informasi periode
-    const periodeResult = await client.query(
-      "SELECT tgl_mulai, tgl_selesai FROM periode_akuntansi WHERE id = $1",
-      [periode_id]
-    );
-    if (periodeResult.rows.length === 0) {
-      throw new Error(`Periode dengan ID ${periode_id} tidak ditemukan.`);
+    if (!periode_id) {
+        return res.status(400).json({ message: "ID Periode dibutuhkan" });
     }
-    const { tgl_mulai, tgl_selesai } = periodeResult.rows[0];
-    const tahun = new Date(tgl_mulai).getFullYear();
+    const client = await db.connect();
 
-    // 2. Ambil konfigurasi SHU dari tabel `konfigurasi_shu`
-    const configs = (
-      await client.query(
-        "SELECT kunci_konfigurasi, nilai FROM konfigurasi_shu"
-      )
-    ).rows.reduce(
-      (acc, row) => ({ ...acc, [row.kunci_konfigurasi]: parseFloat(row.nilai) }),
-      {}
-    );
+    try {
+        await client.query("BEGIN");
 
-    // 3. Hitung SHU Kotor dari pendapatan dan beban
-    const labaRugiResult = await client.query(
-      `SELECT k.header_akun, SUM(j.kredit) - SUM(j.debit) as saldo FROM jurnal_umum j JOIN kode_akun k ON j.akun_id = k.id WHERE (k.header_akun = 'PENDAPATAN' OR k.header_akun = 'BEBAN') AND j.periode_id = $1 GROUP BY k.header_akun;`,
-      [periode_id]
-    );
-    let totalPendapatan = 0,
-      totalBeban = 0;
-    labaRugiResult.rows.forEach((row) => {
-      if (row.header_akun === "PENDAPATAN")
-        totalPendapatan = parseFloat(row.saldo) || 0;
-      if (row.header_akun === "BEBAN")
-        totalBeban = parseFloat(row.saldo) * -1 || 0;
-    });
-    const shuKotor = totalPendapatan - totalBeban;
-
-    // 4. Hitung alokasi SHU untuk peminjam
-    const jasaResult = await client.query(
-      `SELECT COALESCE(SUM(kredit) - SUM(debit), 0) as total FROM jurnal_umum WHERE akun_id = 41 AND periode_id = $1;`,
-      [periode_id]
-    );
-    const totalJasaPinjaman = parseFloat(jasaResult.rows[0].total);
-    const alokasiUntukPeminjam =
-      totalJasaPinjaman * (configs.alokasi_jasa_peminjam_persen / 100);
-    const saldoLaba = shuKotor - alokasiUntukPeminjam;
-
-    // 5. Hitung dana untuk anggota dari simpanan
-    const danaUntukAnggotaViaSimpanan =
-      saldoLaba * (configs.distribusi_anggota_persen / 100);
-
-    // 6. Hitung distribusi lainnya
-    const distribusi = {
-      anggota: danaUntukAnggotaViaSimpanan,
-      cadangan: saldoLaba * (configs.distribusi_cadangan_persen / 100),
-      danaSosial: saldoLaba * (configs.distribusi_sosial_persen / 100),
-      pengurus: saldoLaba * (configs.distribusi_pengurus_persen / 100),
-    };
-
-    // 7. Ambil daftar anggota aktif
-    const anggotaResult = await client.query(
-      "SELECT id, nama FROM anggota WHERE status = 'aktif';"
-    );
-    let rincianAnggota = [];
-    let totalPoinSimpananKeseluruhan = 0;
-
-    // 8. Hitung total jasa yang dibayar oleh semua anggota
-    const totalJasaDibayarSemuaAnggotaResult = await client.query(
-      `
-            SELECT COALESCE(SUM(jasa_dibayar), 0) as total 
-            FROM jadwal_angsuran 
-            WHERE tgl_pembayaran BETWEEN $1 AND $2
-        `,
-      [tgl_mulai, tgl_selesai]
-    );
-    const totalJasaDibayarSemuaAnggota =
-      parseFloat(totalJasaDibayarSemuaAnggotaResult.rows[0].total) || 1;
-
-    // BARU: 8B. Hitung total belanja semua anggota pada periode ini
-    const totalBelanjaSemuaAnggotaResult = await client.query(
-      `SELECT COALESCE(SUM(total_belanja), 0) as total FROM belanja_anggota WHERE periode_id = $1`,
-      [periode_id]
-    );
-    const totalBelanjaSemuaAnggota =
-      parseFloat(totalBelanjaSemuaAnggotaResult.rows[0].total) || 1;
-
-    // 9. Loop setiap anggota untuk menghitung poin dan SHU individu
-    for (const anggota of anggotaResult.rows) {
-      // Hitung poin dari simpanan Pokok & Wajib
-      const pokokWajibResult = await client.query(
-        `SELECT COALESCE(SUM(saldo), 0) as total FROM rekening_simpanan WHERE anggota_id = $1 AND jenis_simpanan IN ('Pokok', 'Wajib')`,
-        [anggota.id]
-      );
-      const poinPokokWajib = parseFloat(pokokWajibResult.rows[0].total) / 10000;
-
-      // Hitung poin dari simpanan Sukarela (saldo rata-rata tahunan)
-      let poinSukarela = 0;
-      const sukarelaResult = await client.query(
-        `SELECT id FROM rekening_simpanan WHERE anggota_id = $1 AND jenis_simpanan = 'Sukarela'`,
-        [anggota.id]
-      );
-      if (sukarelaResult.rows.length > 0) {
-        const idRekeningSukarela = sukarelaResult.rows[0].id;
-        for (let bulan = 1; bulan <= 12; bulan++) {
-          const saldoBulanResult = await client.query(
-            `SELECT COALESCE(SUM(CASE WHEN jenis_transaksi = 'Setor' THEN jumlah ELSE -jumlah END), 0) as saldo FROM transaksi_simpanan WHERE rekening_id = $1 AND EXTRACT(MONTH FROM tgl_transaksi) <= $2 AND EXTRACT(YEAR FROM tgl_transaksi) = $3`,
-            [idRekeningSukarela, bulan, tahun]
-          );
-          const saldoAkhirBulan = parseFloat(saldoBulanResult.rows[0].saldo);
-          let hargaSaham = 15000;
-          if (saldoAkhirBulan > 20000000) hargaSaham = 35000;
-          else if (saldoAkhirBulan > 15000000) hargaSaham = 30000;
-          else if (saldoAkhirBulan > 10000000) hargaSaham = 25000;
-          else if (saldoAkhirBulan > 5000000) hargaSaham = 20000;
-          poinSukarela += saldoAkhirBulan / 12 / hargaSaham;
+        const periodeResult = await client.query(
+            "SELECT tgl_mulai, tgl_selesai FROM periode_akuntansi WHERE id = $1",
+            [periode_id]
+        );
+        if (periodeResult.rows.length === 0) {
+            throw new Error(`Periode dengan ID ${periode_id} tidak ditemukan.`);
         }
-      }
+        const { tgl_mulai, tgl_selesai } = periodeResult.rows[0];
+        const tahun = new Date(tgl_mulai).getFullYear();
 
-      // Hitung poin dari simpanan Lebaran
-      const lebaranResult = await client.query(
-        `SELECT COALESCE(SUM(saldo), 0) as total FROM rekening_simpanan WHERE anggota_id = $1 AND jenis_simpanan = 'Lebaran'`,
-        [anggota.id]
-      );
-      const poinLebaran = parseFloat(lebaranResult.rows[0].total) / 15000;
+        const configs = (
+            await client.query("SELECT kunci_konfigurasi, nilai FROM konfigurasi_shu")
+        ).rows.reduce(
+            (acc, row) => ({ ...acc, [row.kunci_konfigurasi]: parseFloat(row.nilai) }),
+            {}
+        );
 
-      const totalPoinPribadi = poinPokokWajib + poinSukarela + poinLebaran;
-      totalPoinSimpananKeseluruhan += totalPoinPribadi;
+        const labaRugiResult = await client.query(
+            `SELECT k.header_akun, SUM(j.kredit) - SUM(j.debit) as saldo FROM jurnal_umum j JOIN kode_akun k ON j.akun_id = k.id WHERE (k.header_akun = 'PENDAPATAN' OR k.header_akun = 'BEBAN') AND j.periode_id = $1 GROUP BY k.header_akun;`,
+            [periode_id]
+        );
+        let totalPendapatan = 0, totalBeban = 0;
+        labaRugiResult.rows.forEach((row) => {
+            if (row.header_akun === "PENDAPATAN") totalPendapatan = parseFloat(row.saldo) || 0;
+            if (row.header_akun === "BEBAN") totalBeban = parseFloat(row.saldo) * -1 || 0;
+        });
+        const shuKotor = totalPendapatan - totalBeban;
 
-      // Hitung SHU dari pinjaman
-      const jasaPribadiResult = await client.query(
-        `
-                SELECT COALESCE(SUM(ja.jasa_dibayar), 0) as total 
-                FROM jadwal_angsuran ja 
-                JOIN rekening_pinjaman rp ON ja.rekening_pinjaman_id = rp.id 
-                WHERE rp.anggota_id = $1 AND ja.tgl_pembayaran BETWEEN $2 AND $3
-            `,
-        [anggota.id, tgl_mulai, tgl_selesai]
-      );
-      const jasaPribadiDibayar = parseFloat(jasaPribadiResult.rows[0].total || 0);
-      const shuDariPinjaman =
-        (jasaPribadiDibayar / totalJasaDibayarSemuaAnggota) * alokasiUntukPeminjam;
+        const jasaResult = await client.query(
+            `SELECT COALESCE(SUM(kredit) - SUM(debit), 0) as total FROM jurnal_umum WHERE akun_id = 41 AND periode_id = $1;`,
+            [periode_id]
+        );
+        const totalJasaPinjaman = parseFloat(jasaResult.rows[0].total);
+        const alokasiUntukPeminjam = totalJasaPinjaman * (configs.alokasi_jasa_peminjam_persen / 100);
+        const saldoLaba = shuKotor - alokasiUntukPeminjam;
 
-      // BARU: Hitung SHU dari Belanja
-      const belanjaPribadiResult = await client.query(
-        `SELECT COALESCE(SUM(total_belanja), 0) as total FROM belanja_anggota WHERE anggota_id = $1 AND periode_id = $2`,
-        [anggota.id, periode_id]
-      );
-      const belanjaPribadi = parseFloat(belanjaPribadiResult.rows[0].total || 0);
-      const shuDariBelanja =
-        (belanjaPribadi / totalBelanjaSemuaAnggota) *
-        parseFloat(jasa_belanja_dikembalikan || 0);
+        const danaUntukAnggotaViaSimpanan = saldoLaba * (configs.distribusi_anggota_persen / 100);
 
-      rincianAnggota.push({
-        anggota_id: anggota.id,
-        nama: anggota.nama,
-        poinPokokWajib,
-        poinSukarela,
-        poinLebaran,
-        totalPoin: totalPoinPribadi,
-        shuDariPinjaman,
-        shuDariBelanja, // BARU: Menambahkan data SHU dari belanja
-      });
+        const distribusi = {
+            anggota: danaUntukAnggotaViaSimpanan,
+            cadangan: saldoLaba * (configs.distribusi_cadangan_persen / 100),
+            danaSosial: saldoLaba * (configs.distribusi_sosial_persen / 100),
+            pengurus: saldoLaba * (configs.distribusi_pengurus_persen / 100),
+        };
+        
+        // --- Integrasi SHU Pemerataan ---
+        const pemerataanRes = await client.query('SELECT anggota_id, jumlah FROM shu_pemerataan WHERE periode_id = $1', [periode_id]);
+        const pemerataanMap = pemerataanRes.rows.reduce((map, row) => {
+            map[row.anggota_id] = parseFloat(row.jumlah);
+            return map;
+        }, {});
+
+        const anggotaResult = await client.query("SELECT id, nama, kode_anggota FROM anggota WHERE status = 'aktif';");
+        let rincianAnggota = [];
+        let totalPoinSimpananKeseluruhan = 0;
+
+        const totalJasaDibayarSemuaAnggotaResult = await client.query(
+            `SELECT COALESCE(SUM(jasa_dibayar), 0) as total FROM jadwal_angsuran WHERE tgl_pembayaran BETWEEN $1 AND $2`,
+            [tgl_mulai, tgl_selesai]
+        );
+        const totalJasaDibayarSemuaAnggota = parseFloat(totalJasaDibayarSemuaAnggotaResult.rows[0].total) || 1;
+
+        const totalBelanjaSemuaAnggotaResult = await client.query(
+            `SELECT COALESCE(SUM(total_belanja), 0) as total FROM belanja_anggota WHERE periode_id = $1`,
+            [periode_id]
+        );
+        const totalBelanjaSemuaAnggota = parseFloat(totalBelanjaSemuaAnggotaResult.rows[0].total) || 1;
+
+        for (const anggota of anggotaResult.rows) {
+            // Logika poin simpanan... (tidak berubah)
+            const pokokWajibResult = await client.query(`SELECT COALESCE(SUM(saldo), 0) as total FROM rekening_simpanan WHERE anggota_id = $1 AND jenis_simpanan IN ('Pokok', 'Wajib')`, [anggota.id]);
+            const poinPokokWajib = parseFloat(pokokWajibResult.rows[0].total) / 10000;
+            let poinSukarela = 0;
+            const sukarelaResult = await client.query(`SELECT id FROM rekening_simpanan WHERE anggota_id = $1 AND jenis_simpanan = 'Sukarela'`, [anggota.id]);
+            if (sukarelaResult.rows.length > 0) {
+                const idRekeningSukarela = sukarelaResult.rows[0].id;
+                for (let bulan = 1; bulan <= 12; bulan++) {
+                    const saldoBulanResult = await client.query(`SELECT COALESCE(SUM(CASE WHEN jenis_transaksi = 'Setor' THEN jumlah ELSE -jumlah END), 0) as saldo FROM transaksi_simpanan WHERE rekening_id = $1 AND EXTRACT(MONTH FROM tgl_transaksi) <= $2 AND EXTRACT(YEAR FROM tgl_transaksi) = $3`, [idRekeningSukarela, bulan, tahun]);
+                    const saldoAkhirBulan = parseFloat(saldoBulanResult.rows[0].saldo);
+                    let hargaSaham = 15000;
+                    if (saldoAkhirBulan > 20000000) hargaSaham = 35000;
+                    else if (saldoAkhirBulan > 15000000) hargaSaham = 30000;
+                    else if (saldoAkhirBulan > 10000000) hargaSaham = 25000;
+                    else if (saldoAkhirBulan > 5000000) hargaSaham = 20000;
+                    poinSukarela += saldoAkhirBulan / 12 / hargaSaham;
+                }
+            }
+            const lebaranResult = await client.query(`SELECT COALESCE(SUM(saldo), 0) as total FROM rekening_simpanan WHERE anggota_id = $1 AND jenis_simpanan = 'Lebaran'`, [anggota.id]);
+            const poinLebaran = parseFloat(lebaranResult.rows[0].total) / 15000;
+            const totalPoinPribadi = poinPokokWajib + poinSukarela + poinLebaran;
+            totalPoinSimpananKeseluruhan += totalPoinPribadi;
+
+            // Logika SHU Pinjaman... (tidak berubah)
+            const jasaPribadiResult = await client.query(`SELECT COALESCE(SUM(ja.jasa_dibayar), 0) as total FROM jadwal_angsuran ja JOIN rekening_pinjaman rp ON ja.rekening_pinjaman_id = rp.id WHERE rp.anggota_id = $1 AND ja.tgl_pembayaran BETWEEN $2 AND $3`, [anggota.id, tgl_mulai, tgl_selesai]);
+            const jasaPribadiDibayar = parseFloat(jasaPribadiResult.rows[0].total || 0);
+            const shuDariPinjaman = (jasaPribadiDibayar / totalJasaDibayarSemuaAnggota) * alokasiUntukPeminjam;
+
+            // Logika SHU Belanja... (tidak berubah)
+            const belanjaPribadiResult = await client.query(`SELECT COALESCE(SUM(total_belanja), 0) as total FROM belanja_anggota WHERE anggota_id = $1 AND periode_id = $2`, [anggota.id, periode_id]);
+            const belanjaPribadi = parseFloat(belanjaPribadiResult.rows[0].total || 0);
+            const poinBelanja = belanjaPribadi / configs.harga_poin_belanja;
+            const shuDariBelanja = (belanjaPribadi / totalBelanjaSemuaAnggota) * parseFloat(jasa_belanja_dikembalikan || 0);
+            
+            // Ambil SHU Pemerataan
+            const shuPemerataan = pemerataanMap[anggota.id] || 0;
+
+            rincianAnggota.push({
+                anggota_id: anggota.id,
+                nama: anggota.nama,
+                kode_anggota: anggota.kode_anggota,
+                poinPokokWajib,
+                poinSukarela,
+                poinLebaran,
+                totalPoin: totalPoinPribadi,
+                poinBelanja,
+                shuDariPinjaman,
+                shuDariBelanja,
+                shuPemerataan, // <-- Data baru
+            });
+        }
+
+        const indeksPoin = totalPoinSimpananKeseluruhan > 0 ? danaUntukAnggotaViaSimpanan / totalPoinSimpananKeseluruhan : 0;
+
+        rincianAnggota = rincianAnggota.map((anggota) => {
+            const shuPokokWajib = anggota.poinPokokWajib * indeksPoin;
+            const shuSukarela = anggota.poinSukarela * indeksPoin;
+            const shuLebaran = anggota.poinLebaran * indeksPoin;
+            const shuTotalSimpanan = shuPokokWajib + shuSukarela + shuLebaran;
+            const shuTotalDiterima = shuTotalSimpanan + anggota.shuDariPinjaman + anggota.shuDariBelanja + anggota.shuPemerataan;
+            
+            return {
+                ...anggota,
+                shuPokokWajib,
+                shuSukarela,
+                shuLebaran,
+                shuTotalSimpanan,
+                shuTotalDiterima,
+            };
+        });
+
+        await client.query("COMMIT");
+        res.status(200).json({
+            configs,
+            saldoLaba,
+            distribusi,
+            danaUntukAnggotaViaSimpanan,
+            alokasiUntukPeminjam,
+            totalPoinSimpananKeseluruhan,
+            indeksPoin,
+            rincianAnggota,
+        });
+    } catch (error) {
+        await client.query("ROLLBACK");
+        console.error("Error saat menghitung SHU:", error);
+        res.status(500).json({ message: "Gagal menghitung SHU" });
+    } finally {
+        client.release();
     }
-
-    // 10. Hitung indeks poin dan alokasikan SHU simpanan ke setiap anggota
-    const indeksPoin =
-      totalPoinSimpananKeseluruhan > 0
-        ? danaUntukAnggotaViaSimpanan / totalPoinSimpananKeseluruhan
-        : 0;
-
-    rincianAnggota = rincianAnggota.map((anggota) => {
-      const shuPokokWajib = anggota.poinPokokWajib * indeksPoin;
-      const shuSukarela = anggota.poinSukarela * indeksPoin;
-      const shuLebaran = anggota.poinLebaran * indeksPoin;
-      const shuTotalSimpanan = shuPokokWajib + shuSukarela + shuLebaran;
-      // BARU: Menambahkan shuDariBelanja ke total yang diterima
-      const shuTotalDiterima =
-        shuTotalSimpanan + anggota.shuDariPinjaman + anggota.shuDariBelanja;
-      return {
-        ...anggota,
-        shuPokokWajib,
-        shuSukarela,
-        shuLebaran,
-        shuTotalSimpanan,
-        shuTotalDiterima,
-      };
-    });
-
-    // 11. Commit transaksi dan kirim respons
-    await client.query("COMMIT");
-    res.status(200).json({
-      configs,
-      saldoLaba,
-      distribusi,
-      danaUntukAnggotaViaSimpanan,
-      alokasiUntukPeminjam,
-      totalPoinSimpananKeseluruhan,
-      indeksPoin,
-      rincianAnggota,
-    });
-  } catch (error) {
-    await client.query("ROLLBACK");
-    console.error("Error saat menghitung SHU:", error);
-    res.status(500).json({ message: "Gagal menghitung SHU" });
-  } finally {
-    client.release();
-  }
 };
-
-// FUNGSI BARU: Mengambil ringkasan saldo akhir 
-// Mengambil saldo akhir setiap akun pada periode tertentu.
+// Fungsi ini tidak diubah, tetap sama seperti milik Anda
 export const getBukuBesarSummary = async (req, res) => {
     const { periode_id } = req.query;
     if (!periode_id) return res.status(400).json({ message: 'ID Periode dibutuhkan' });
@@ -388,7 +336,7 @@ export const getBukuBesarSummary = async (req, res) => {
                 ? parseFloat(akun.total_debit) - parseFloat(akun.total_kredit)
                 : parseFloat(akun.total_kredit) - parseFloat(akun.total_debit);
             return { ...akun, saldo_akhir: saldoAkhir };
-        }).filter(akun => akun.total_debit > 0 || akun.total_kredit > 0 || akun.saldo_akhir !== 0); // Tampilkan akun yang memiliki saldo akhir juga.
+        }).filter(akun => akun.total_debit > 0 || akun.total_kredit > 0 || akun.saldo_akhir !== 0);
 
         res.status(200).json(daftarAkun);
     } catch (error) {
@@ -396,19 +344,16 @@ export const getBukuBesarSummary = async (req, res) => {
     }
 };
 
-// FUNGSI BARU: Mengambil rincian transaksi satu akun
-// Mengambil detail transaksi untuk satu akun pada periode tertentu.
+// Fungsi ini tidak diubah, tetap sama seperti milik Anda
 export const getBukuBesarDetail = async (req, res) => {
     const { akun_id, periode_id } = req.query;
     if (!akun_id || !periode_id) return res.status(400).json({ message: 'ID Akun dan ID Periode dibutuhkan' });
 
     try {
-        // Query untuk mengambil info akun
         const akunQuery = 'SELECT kode, nama_akun, posisi_saldo FROM kode_akun WHERE id = $1';
         const akunResult = await db.query(akunQuery, [akun_id]);
         if(akunResult.rows.length === 0) return res.status(404).json({ message: 'Akun tidak ditemukan' });
 
-        // Query untuk mengambil transaksi
         const trxQuery = `
             SELECT tgl_transaksi, keterangan, debit, kredit
             FROM jurnal_umum
@@ -426,14 +371,12 @@ export const getBukuBesarDetail = async (req, res) => {
     }
 };
 
-
-// --- FUNGSI BARU UNTUK EKSPOR NERACA ---
+// Fungsi ini tidak diubah, tetap sama seperti milik Anda
 export const exportNeraca = async (req, res) => {
   const { periode_id } = req.query;
   if (!periode_id) return res.status(400).json({ message: 'ID Periode dibutuhkan' });
 
   try {
-    // 1. Ambil data neraca (memanggil fungsi getNeraca secara internal)
     const mockReq = { query: { periode_id } };
     let neracaData;
     const mockRes = {
@@ -446,24 +389,20 @@ export const exportNeraca = async (req, res) => {
         throw new Error("Gagal mendapatkan data neraca untuk ekspor.");
     }
 
-    // 2. Buat file Excel menggunakan ExcelJS
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Neraca');
 
-    // Judul
     worksheet.addRow(['Laporan Neraca']);
     worksheet.mergeCells('A1:C1');
     worksheet.getCell('A1').font = { bold: true, size: 16, name: 'Calibri' };
     worksheet.getCell('A1').alignment = { horizontal: 'center' };
     worksheet.addRow([]);
 
-    // Header Aktiva
     worksheet.addRow(['AKTIVA']);
     worksheet.getCell('A3').font = { bold: true, color: { argb: 'FF0000FF' } };
     const headerAktiva = worksheet.addRow(['Kode Akun', 'Nama Akun', 'Saldo']);
     headerAktiva.font = { bold: true };
 
-    // Data Aktiva
     neracaData.aset.forEach(akun => {
       const row = worksheet.addRow([akun.kode, akun.nama_akun, akun.saldo]);
       row.getCell(3).numFmt = '"Rp "#,##0.00;[Red]"Rp "-#,##0.00';
@@ -473,13 +412,11 @@ export const exportNeraca = async (req, res) => {
     totalAktivaRow.getCell(3).numFmt = '"Rp "#,##0.00;[Red]"Rp "-#,##0.00';
     worksheet.addRow([]);
 
-    // Header Pasiva
     worksheet.addRow(['PASIVA']);
     worksheet.lastRow.getCell(1).font = { bold: true, color: { argb: 'FF0000FF' } };
     const headerPasiva = worksheet.addRow(['Kode Akun', 'Nama Akun', 'Saldo']);
     headerPasiva.font = { bold: true };
 
-    // Data Kewajiban
     worksheet.addRow(['', 'Kewajiban', '']).font = { italic: true };
     neracaData.kewajiban.forEach(akun => {
       const row = worksheet.addRow([akun.kode, akun.nama_akun, akun.saldo]);
@@ -489,7 +426,6 @@ export const exportNeraca = async (req, res) => {
     totalKewajibanRow.font = { bold: true };
     totalKewajibanRow.getCell(3).numFmt = '"Rp "#,##0.00;[Red]"Rp "-#,##0.00';
     
-    // Data Modal
     worksheet.addRow(['', 'Modal', '']).font = { italic: true };
     neracaData.modal.forEach(akun => {
       const row = worksheet.addRow([akun.kode, akun.nama_akun, akun.saldo]);
@@ -499,17 +435,14 @@ export const exportNeraca = async (req, res) => {
     totalModalRow.font = { bold: true };
     totalModalRow.getCell(3).numFmt = '"Rp "#,##0.00;[Red]"Rp "-#,##0.00';
     
-    // Total Pasiva
     const totalPasivaRow = worksheet.addRow(['', 'Total Kewajiban & Modal', neracaData.totalKewajibanDanModal]);
     totalPasivaRow.font = { bold: true };
     totalPasivaRow.getCell(3).numFmt = '"Rp "#,##0.00;[Red]"Rp "-#,##0.00';
     
-    // Atur lebar kolom
     worksheet.columns.forEach(column => {
         column.width = column.header === 'Nama Akun' ? 40 : 15;
     });
 
-    // 3. Kirim file ke browser
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=' + 'Laporan_Neraca.xlsx');
 
@@ -522,14 +455,12 @@ export const exportNeraca = async (req, res) => {
   }
 };
 
-
-// --- FUNGSI BARU UNTUK EKSPOR LABA RUGI ---
+// Fungsi ini tidak diubah, tetap sama seperti milik Anda
 export const exportLabaRugi = async (req, res) => {
   const { periode_id } = req.query;
   if (!periode_id) return res.status(400).json({ message: 'ID Periode dibutuhkan' });
 
   try {
-    // 1. Ambil data laba rugi (memanggil fungsi getLabaRugi secara internal)
     const mockReq = { query: { periode_id } };
     let labaRugiData;
     const mockRes = {
@@ -542,18 +473,15 @@ export const exportLabaRugi = async (req, res) => {
       throw new Error("Gagal mendapatkan data laba rugi untuk ekspor.");
     }
 
-    // 2. Buat file Excel
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Laba_Rugi');
 
-    // Judul
     worksheet.addRow(['Laporan Laba Rugi']);
     worksheet.mergeCells('A1:B1');
     worksheet.getCell('A1').font = { bold: true, size: 16, name: 'Calibri' };
     worksheet.getCell('A1').alignment = { horizontal: 'center' };
     worksheet.addRow([]);
 
-    // Pendapatan
     worksheet.addRow(['Pendapatan']).font = { bold: true, size: 14 };
     labaRugiData.pendapatan.forEach(item => {
       const row = worksheet.addRow([item.nama_akun, item.total]);
@@ -564,7 +492,6 @@ export const exportLabaRugi = async (req, res) => {
     totalPendapatanRow.getCell(2).numFmt = '"Rp "#,##0.00';
     worksheet.addRow([]);
 
-    // Beban
     worksheet.addRow(['Beban']).font = { bold: true, size: 14 };
     labaRugiData.beban.forEach(item => {
       const row = worksheet.addRow([item.nama_akun, item.total]);
@@ -575,16 +502,13 @@ export const exportLabaRugi = async (req, res) => {
     totalBebanRow.getCell(2).numFmt = '"Rp "#,##0.00';
     worksheet.addRow([]);
 
-    // Laba/Rugi
     const labaRugiRow = worksheet.addRow(['Sisa Hasil Usaha (Laba/Rugi)', labaRugiData.labaRugi]);
     labaRugiRow.font = { bold: true, size: 12, color: { argb: labaRugiData.labaRugi >= 0 ? 'FF008000' : 'FFFF0000' } };
     labaRugiRow.getCell(2).numFmt = '"Rp "#,##0.00';
     
-    // Atur lebar kolom
     worksheet.getColumn('A').width = 40;
     worksheet.getColumn('B').width = 20;
 
-    // 3. Kirim file ke browser
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=' + 'Laporan_Laba_Rugi.xlsx');
     
@@ -594,5 +518,130 @@ export const exportLabaRugi = async (req, res) => {
   } catch (error) {
     console.error("Error saat ekspor laba rugi:", error);
     res.status(500).json({ message: "Gagal mengekspor laporan." });
+  }
+};
+
+    // ... (kode-kode fungsi yang sudah ada di atasnya)
+
+    /**
+     * FUNGSI BARU: Mengekspor Laporan SHU ke format Excel
+     * Mengambil data SHU yang sudah dihitung dan menyusunnya dalam file .xlsx
+     */
+    export const exportSHU = async (req, res) => {
+  const { periode_id, jasa_belanja_dikembalikan } = req.query;
+  if (!periode_id) {
+    return res.status(400).json({ message: 'ID Periode dibutuhkan' });
+  }
+
+  try {
+    // Kita "meminjam" response dari fungsi hitungSHU yang sudah ada
+    let shuData;
+    const mockReq = { query: { periode_id, jasa_belanja_dikembalikan: jasa_belanja_dikembalikan || 0 } };
+    const mockRes = {
+      status: () => mockRes,
+      json: (data) => { shuData = data; }
+    };
+    await hitungSHU(mockReq, mockRes);
+
+    if (!shuData || !shuData.rincianAnggota) {
+      throw new Error("Gagal mendapatkan data SHU untuk diekspor.");
+    }
+
+    // --- PERBAIKAN DI SINI ---
+    // Urutkan data berdasarkan nama anggota (A-Z) sebelum dimasukkan ke Excel
+    shuData.rincianAnggota.sort((a, b) => a.nama.localeCompare(b.nama));
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Laporan SHU');
+
+    // Judul Laporan
+    worksheet.addRow(['Laporan Sisa Hasil Usaha (SHU)']).font = { bold: true, size: 16 };
+    worksheet.mergeCells('A1:G1'); // Diperbarui menjadi G1
+    worksheet.getCell('A1').alignment = { horizontal: 'center' };
+    worksheet.addRow([]); // Baris kosong
+
+    // Header Tabel
+    const headerRow = worksheet.addRow([
+      'Kode Anggota',
+      'Nama Anggota',
+      'SHU Simpanan',
+      'SHU Pinjaman',
+      'SHU Belanja',
+      'SHU Pemerataan',
+      'Total Diterima'
+    ]);
+    headerRow.font = { bold: true };
+    headerRow.eachCell(cell => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFDDEBF7' }
+      };
+      cell.border = {
+        top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
+      };
+    });
+
+    // Isi Data Anggota (sekarang sudah terurut)
+    shuData.rincianAnggota.forEach(anggota => {
+      const row = worksheet.addRow([
+        anggota.kode_anggota,
+        anggota.nama,
+        anggota.shuTotalSimpanan,
+        anggota.shuDariPinjaman,
+        anggota.shuDariBelanja,
+        anggota.shuPemerataan,
+        anggota.shuTotalDiterima
+      ]);
+      row.getCell(3).numFmt = '"Rp "#,##0';
+      row.getCell(4).numFmt = '"Rp "#,##0';
+      row.getCell(5).numFmt = '"Rp "#,##0';
+      row.getCell(6).numFmt = '"Rp "#,##0';
+      row.getCell(7).numFmt = '"Rp "#,##0';
+    });
+
+    // Baris Total
+    worksheet.addRow([]);
+    const totals = shuData.rincianAnggota.reduce((acc, item) => {
+        acc.shuSimpanan += item.shuTotalSimpanan || 0;
+        acc.shuPinjaman += item.shuDariPinjaman || 0;
+        acc.shuBelanja += item.shuDariBelanja || 0;
+        acc.shuPemerataan += item.shuPemerataan || 0;
+        acc.shuTotal += item.shuTotalDiterima || 0;
+        return acc;
+    }, { shuSimpanan: 0, shuPinjaman: 0, shuBelanja: 0, shuPemerataan: 0, shuTotal: 0 });
+
+    const totalRow = worksheet.addRow([
+      '', 'TOTAL KESELURUHAN',
+      totals.shuSimpanan,
+      totals.shuPinjaman,
+      totals.shuBelanja,
+      totals.shuPemerataan,
+      totals.shuTotal
+    ]);
+    totalRow.font = { bold: true };
+    totalRow.getCell(2).alignment = { horizontal: 'right' };
+    for (let i = 3; i <= 7; i++) {
+        totalRow.getCell(i).numFmt = '"Rp "#,##0';
+    }
+
+    // Atur lebar kolom
+    worksheet.getColumn('A').width = 15;
+    worksheet.getColumn('B').width = 30;
+    worksheet.getColumn('C').width = 20;
+    worksheet.getColumn('D').width = 20;
+    worksheet.getColumn('E').width = 20;
+    worksheet.getColumn('F').width = 20;
+    worksheet.getColumn('G').width = 20;
+
+    // Kirim file ke browser
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="Laporan_SHU.xlsx"');
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error("Error saat ekspor SHU:", error);
+    res.status(500).json({ message: "Gagal mengekspor laporan SHU." });
   }
 };

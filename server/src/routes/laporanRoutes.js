@@ -9,7 +9,8 @@ import {
   getBukuBesarSummary,
   getBukuBesarDetail,
   exportNeraca,  // Tambahkan import untuk exportNeraca
-  exportLabaRugi
+  exportLabaRugi,
+  exportSHU
 } from '../controllers/laporanController.js';
 
 const router = express.Router();
@@ -27,6 +28,7 @@ router.get('/buku-besar/detail', getBukuBesarDetail);
 // Route baru untuk ekspor laporan Neraca dalam format Excel
 router.get('/neraca/export', exportNeraca); // <-- ROUTE BARU untuk ekspor Neraca
 router.get('/laba-rugi/export', exportLabaRugi);
+router.get('/shu/export', exportSHU); // <-- TAMBAHKAN ROUTE BARU INI
 
 
 export default router;

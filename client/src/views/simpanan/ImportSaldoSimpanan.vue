@@ -1,51 +1,57 @@
 <template>
-  <div class="p-1">
-    <div class="card bg-base-100 shadow-sm border border-base-200">
-      <div class="card-body">
-        <h1 class="text-2xl font-bold text-gray-800">
+  <div class="p-6 space-y-6">
+    <!-- Card Container -->
+    <div class="bg-white shadow-lg rounded-lg border border-gray-200">
+      <div class="p-6">
+        <h1 class="text-3xl font-semibold text-gray-900">
           Impor Saldo Awal Simpanan
         </h1>
-        <p class="text-gray-500 mt-1 mb-6">
+        <p class="text-gray-600 mt-2 mb-6">
           Unggah file CSV berisi saldo akhir simpanan anggota dari sistem lama.
         </p>
 
-        <div class="mb-6">
-          <h3 class="font-semibold text-lg mb-2">
+        <!-- Step 1: Download Format -->
+        <div class="bg-gray-50 p-4 rounded-lg shadow-sm mb-6">
+          <h3 class="font-semibold text-lg text-gray-800 mb-2">
             Langkah 1: Unduh dan Isi Format
           </h3>
-          <p class="text-sm mb-3">
+          <p class="text-sm text-gray-600 mb-3">
             Unduh format, lalu isi dengan kode anggota, jenis simpanan, dan
             saldo akhir per tutup buku.
           </p>
           <button
             @click="downloadFormat"
-            class="btn btn-outline btn-primary btn-sm"
+            class="btn btn-outline btn-primary hover:bg-primary-600 hover:text-white text-gray-800 btn-sm"
           >
             <i class="fas fa-download mr-2"></i> Unduh Format CSV
           </button>
         </div>
 
-        <div>
-          <h3 class="font-semibold text-lg mb-2">Langkah 2: Unggah File</h3>
-          <div class="form-control w-full max-w-xs">
-            <label class="label">
+        <!-- Step 2: Upload File -->
+        <div class="bg-gray-50 p-4 rounded-lg shadow-sm">
+          <h3 class="font-semibold text-lg text-gray-800 mb-2">
+            Langkah 2: Unggah File
+          </h3>
+          <div class="form-control w-full max-w-md mb-4">
+            <label class="label text-gray-800">
               <span class="label-text">Pilih file CSV</span>
             </label>
             <input
               type="file"
               @change="handleFileChange"
               accept=".csv"
-              class="file-input file-input-bordered w-full max-w-xs"
+              class="file-input file-input-bordered w-full"
             />
           </div>
+
           <button
             @click="handleImport"
             :disabled="!selectedFile || isLoading"
-            class="btn btn-primary mt-4"
+            class="btn btn-primary w-full hover:bg-primary-600 hover:text-white flex justify-center items-center mt-4"
           >
             <span
               v-if="isLoading"
-              class="loading loading-spinner loading-sm"
+              class="loading loading-spinner loading-sm mr-2"
             ></span>
             <i v-else class="fas fa-upload mr-2"></i>
             {{ isLoading ? "Memproses..." : "Mulai Impor" }}

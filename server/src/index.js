@@ -40,7 +40,7 @@ import periodeRoutes from './routes/periodeRoutes.js';
 import jurnalRoutes from './routes/jurnalRoutes.js'; // <-- IMPORT BARU
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import memberRoutes from './routes/memberRoutes.js';
-
+import shuPemerataanRoutes from './routes/shuPemerataanRoutes.js'; 
 
 // Inisialisasi aplikasi express
 const app = express();
@@ -70,6 +70,8 @@ app.use('/api/jurnal', jurnalRoutes); // <-- GUNAKAN ROUTE BARU
 app.use('/api/toko', tokoRoutes); // <-- GUNAKAN ROUTE BARU
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/member', memberRoutes);
+app.use('/api/shu-pemerataan', shuPemerataanRoutes);
+
 
 
 
