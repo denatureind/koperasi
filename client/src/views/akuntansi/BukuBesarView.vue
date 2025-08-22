@@ -196,15 +196,24 @@ const toast = useToast();
 
 // Komputasi untuk nilai total
 const totalDebit = computed(() =>
-  daftarAkun.value.reduce((sum, akun) => sum + akun.total_debit, 0)
+  daftarAkun.value.reduce(
+    (sum, akun) => sum + parseFloat(akun.total_debit || 0),
+    0
+  )
 );
 
 const totalKredit = computed(() =>
-  daftarAkun.value.reduce((sum, akun) => sum + akun.total_kredit, 0)
+  daftarAkun.value.reduce(
+    (sum, akun) => sum + parseFloat(akun.total_kredit || 0),
+    0
+  )
 );
 
 const totalSaldo = computed(() =>
-  daftarAkun.value.reduce((sum, akun) => sum + akun.saldo_akhir, 0)
+  daftarAkun.value.reduce(
+    (sum, akun) => sum + parseFloat(akun.saldo_akhir || 0),
+    0
+  )
 );
 
 const fetchData = async (periodeId) => {

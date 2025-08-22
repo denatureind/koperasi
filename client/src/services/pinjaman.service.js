@@ -1,35 +1,34 @@
-import axios from "axios";
+import api from "./api"; // Menggunakan standar koneksi proyek kita
 
-const API_URL = "/api/pinjaman";
+const API_URL = "/pinjaman"; // Hapus "/api" dari sini
 
 export default {
-  // Mengambil SEMUA pinjaman
-  getAll() {
-    return axios.get(API_URL);
+  // Mengambil SEMUA pinjaman dengan pagination dan search
+  getAll(params) {
+    return api.get(API_URL, { params });
   },
 
-  // FUNGSI YANG HILANG SEBELUMNYA
   getAllTransaksi() {
-    return axios.get(`${API_URL}/transaksi`);
+    return api.get(`${API_URL}/transaksi`);
   },
 
-  // Membuat pinjaman baru
   create(data) {
-    return axios.post(API_URL, data);
+    return api.post(API_URL, data);
   },
 
-  // Mengambil pinjaman milik satu anggota
   getByAnggotaId(anggotaId) {
-    return axios.get(`${API_URL}/anggota/${anggotaId}`);
+    return api.get(`${API_URL}/anggota/${anggotaId}`);
   },
 
-  // Mengambil detail satu pinjaman
   getById(id) {
-    return axios.get(`${API_URL}/${id}`);
+    return api.get(`${API_URL}/${id}`);
   },
 
-  // Membayar angsuran
   bayarAngsuran(jadwalId, data) {
-    return axios.post(`${API_URL}/bayar/${jadwalId}`, data);
+    return api.post(`${API_URL}/bayar/${jadwalId}`, data);
+  },
+
+  lunasi(id, data) {
+    return api.post(`${API_URL}/${id}/lunasi`, data);
   },
 };

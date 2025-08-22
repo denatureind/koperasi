@@ -1,3 +1,5 @@
+// client/src/router/index.js
+// :contentReference[oaicite:0]{index=0}
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/stores/auth.store.js";
 import { useMemberAuthStore } from "@/stores/memberAuth.store.js";
@@ -178,6 +180,20 @@ const routes = [
         path: "toko/input-belanja",
         name: "input-belanja",
         component: () => import("@/views/toko/InputBelanjaView.vue"),
+      },
+    ],
+  },
+
+  // --- RUTE KAS & BANK (grup sendiri) ---
+  {
+    path: "/kas-bank",
+    component: AppLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: "akun",
+        name: "KasBankList",
+        component: () => import("@/views/kasbank/KasBankListView.vue"),
       },
     ],
   },

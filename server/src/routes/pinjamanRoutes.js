@@ -5,7 +5,8 @@ import {
   getDetailPinjamanById,
   createPembayaranAngsuran,
   getAllPinjaman,
-  getAllTransaksi // <-- PASTIKAN FUNGSI INI DIIMPOR
+  getAllTransaksi,
+  lunasiPinjaman
 } from '../controllers/pinjamanController.js';
 
 const router = express.Router();
@@ -23,5 +24,6 @@ router.get('/:id', getDetailPinjamanById);
 // --- ROUTE POST ---
 router.post('/', createPinjaman);
 router.post('/bayar/:jadwalId', createPembayaranAngsuran);
+router.post('/:id/lunasi', lunasiPinjaman);
 
 export default router;

@@ -6,7 +6,8 @@ import {
   getAllAnggota, 
   getAnggotaById,
   updateAnggota,     // <-- Import fungsi baru
-  deleteAnggota      // <-- Import fungsi baru
+  deleteAnggota,      // <-- Import fungsi baru
+  exportAnggotaToExcel
   
 } from '../controllers/anggotaController.js';
 
@@ -15,6 +16,7 @@ const router = express.Router();
 // Route yang sudah ada
 router.get('/', getAllAnggota);
 router.get('/:id', getAnggotaById);
+router.get('/export/excel', exportAnggotaToExcel);
 router.post('/', createAnggota);
 router.post('/create', createAnggotaAuth); // <-- ROUTE BARU
 router.put('/reset-password', resetAnggotaPassword);

@@ -31,6 +31,14 @@
           </ul>
         </div>
       </div>
+      <button
+        v-if="pinjaman.status === 'aktif'"
+        @click="openPelunasanModal"
+        class="btn bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors shadow-md flex items-center"
+      >
+        <i class="fas fa-money-bill-wave mr-2"></i>
+        Lakukan Pelunasan Dipercepat
+      </button>
     </div>
 
     <!-- Grid Informasi Pinjaman -->
@@ -319,6 +327,72 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Pelunasan Dipercepat -->
+    <div
+      v-if="isPelunasanModalOpen"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    >
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
+        <div class="p-6">
+          <h3 class="font-bold text-xl text-gray-800 mb-4">
+            Pelunasan Dipercepat
+          </h3>
+          <div class="space-y-4 mb-6">
+            <div class="flex justify-between">
+              <span class="text-gray-700">Sisa Pokok Pinjaman:</span>
+              <span class="font-semibold">{{
+                formatUang(pelunasanData.sisa_pokok)
+              }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-700">Jasa Bulan Berjalan:</span>
+              <span class="font-semibold">{{
+                formatUang(pelunasanData.jasa_berjalan)
+              }}</span>
+            </div>
+            <div class="flex justify-between border-t border-gray-200 pt-2">
+              <span class="text-gray-700 font-bold"
+                >Total yang Harus Dibayar:</span
+              >
+              <span class="font-bold text-green-600">{{
+                formatUang(pelunasanData.total)
+              }}</span>
+            </div>
+          </div>
+          <form @submit.prevent="handleConfirmPelunasan" class="space-y-5">
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text text-gray-700 font-medium"
+                  >Tanggal Bayar</span
+                >
+              </label>
+              <input
+                type="date"
+                v-model="pelunasanData.tgl_bayar"
+                class="input input-bordered w-full border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg p-3 shadow-sm"
+                required
+              />
+            </div>
+            <div class="flex justify-end space-x-3 pt-4">
+              <button
+                type="button"
+                @click="isPelunasanModalOpen = false"
+                class="btn bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                class="btn bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors shadow-md"
+              >
+                Konfirmasi Pelunasan
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
   <div v-else class="text-center py-16">
     <h2 class="text-xl font-bold text-gray-800">Pinjaman tidak ditemukan</h2>
@@ -331,65 +405,98 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { useRoute } from "vue-router";
-import axios from "axios";
+import PinjamanService from "@/services/pinjaman.service.js";
+import { useToast } from "vue-toastification";
 
 const route = useRoute();
+const toast = useToast(); // Inisialisasi toast
 const pinjamanId = route.params.id;
+
 const pinjaman = ref(null);
 const isLoading = ref(true);
-
-// --- STATE BARU UNTUK FORM PEMBAYARAN ---
-const jadwalUntukDibayar = ref(null); // Menyimpan data jadwal yg akan dibayar
+const jadwalUntukDibayar = ref(null);
 const formBayar = ref({
-  tgl_bayar: new Date().toISOString().split("T")[0], // Default: hari ini
+  tgl_bayar: new Date().toISOString().split("T")[0],
   bayar_pokok: 0,
   bayar_jasa: 0,
 });
 
+const isPelunasanModalOpen = ref(false);
+const pelunasanData = ref({
+  sisa_pokok: 0,
+  jasa_berjalan: 0,
+  total: 0,
+  tgl_bayar: new Date().toISOString().split("T")[0],
+});
+
 const formatUang = (angka) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(
-    angka
+    angka || 0
   );
 
 const fetchPinjamanDetail = async () => {
+  isLoading.value = true;
   try {
-    const response = await axios.get(
-      `http://localhost:5000/api/pinjaman/${pinjamanId}`
-    );
+    // Diperbaiki: Gunakan PinjamanService
+    const response = await PinjamanService.getById(pinjamanId);
     pinjaman.value = response.data;
-    isLoading.value = false;
   } catch (error) {
+    toast.error("Gagal memuat detail pinjaman.");
     console.error("Gagal memuat detail pinjaman:", error);
+  } finally {
     isLoading.value = false;
   }
 };
 
-// --- FUNGSI BARU UNTUK MEMBUKA FORM ---
 const bukaFormBayar = (jadwal) => {
   jadwalUntukDibayar.value = jadwal;
-  // Isi form dengan sisa tagihan
   formBayar.value.bayar_pokok =
     parseFloat(jadwal.jumlah_angsuran_pokok) - parseFloat(jadwal.pokok_dibayar);
   formBayar.value.bayar_jasa =
     parseFloat(jadwal.jumlah_angsuran_jasa) - parseFloat(jadwal.jasa_dibayar);
 };
 
-// --- FUNGSI BARU UNTUK SUBMIT FORM BAYAR ---
 const handleFormBayar = async () => {
   if (!jadwalUntukDibayar.value) return;
-
   const jadwalId = jadwalUntukDibayar.value.id;
   try {
-    await axios.post(
-      `http://localhost:5000/api/pinjaman/bayar/${jadwalId}`,
-      formBayar.value
-    );
-    alert("Pembayaran berhasil!");
-    jadwalUntukDibayar.value = null; // Tutup modal
-    fetchPinjamanDetail(); // Refresh data
+    // Diperbaiki: Gunakan PinjamanService
+    await PinjamanService.bayarAngsuran(jadwalId, formBayar.value);
+    toast.success("Pembayaran berhasil!");
+    jadwalUntukDibayar.value = null;
+    fetchPinjamanDetail();
   } catch (error) {
-    alert(error.response?.data?.message || "Gagal melakukan pembayaran.");
+    toast.error(error.response?.data?.message || "Gagal melakukan pembayaran.");
     console.error("Error saat bayar angsuran:", error);
+  }
+};
+
+const openPelunasanModal = () => {
+  const angsuranBelumBayar = pinjaman.value.jadwal_angsuran.find(
+    (j) => j.status_pembayaran === "belum_bayar"
+  );
+
+  pelunasanData.value.sisa_pokok = parseFloat(pinjaman.value.sisa_pokok);
+  pelunasanData.value.jasa_berjalan = angsuranBelumBayar
+    ? parseFloat(angsuranBelumBayar.jumlah_angsuran_jasa)
+    : 0;
+  pelunasanData.value.total =
+    pelunasanData.value.sisa_pokok + pelunasanData.value.jasa_berjalan;
+
+  isPelunasanModalOpen.value = true;
+};
+
+const handleConfirmPelunasan = async () => {
+  try {
+    await PinjamanService.lunasi(pinjamanId, {
+      tgl_bayar: pelunasanData.value.tgl_bayar,
+    });
+    toast.success("Pelunasan berhasil!");
+    isPelunasanModalOpen.value = false;
+    fetchPinjamanDetail();
+  } catch (error) {
+    toast.error(error.response?.data?.message || "Gagal melakukan pelunasan.");
+    console.error("Error saat melunasi pinjaman:", error);
   }
 };
 

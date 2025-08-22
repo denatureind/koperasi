@@ -1,14 +1,16 @@
-import axios from "axios";
-
-const API_URL = "/api/akun";
+import api from "./api";
 
 const AkunService = {
   getAll() {
-    return axios.get(API_URL);
+    return api.get("/akun");
   },
+
   getAkunKewajiban() {
-    // Fungsi baru untuk mengambil akun kewajiban
-    return axios.get(`${API_URL}/kewajiban`);
+    return api.get("/akun/kewajiban");
+  },
+
+  getAkunUntukKasBank() {
+    return api.get("/akun/untuk-kas-bank");
   },
 };
 

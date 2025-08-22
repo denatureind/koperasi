@@ -1,38 +1,44 @@
-import axios from "axios";
+import api from "./api";
 
-const API_URL = "/api/simpanan";
-
-export default {
-  // INI FUNGSI YANG HILANG
-  getSimpananSummary() {
-    return axios.get(`${API_URL}/rekening`);
+const SimpananService = {
+  getSimpananSummary(params) {
+    return api.get("/simpanan/rekening", { params });
   },
 
   getAllTransaksi() {
-    return axios.get(`${API_URL}/transaksi`);
+    return api.get("/simpanan/transaksi");
   },
 
   getRekeningByAnggotaId(anggotaId) {
-    return axios.get(`${API_URL}/rekening/anggota/${anggotaId}`);
+    return api.get(`/simpanan/rekening/anggota/${anggotaId}`);
   },
 
   getRekeningById(id) {
-    return axios.get(`${API_URL}/rekening/${id}`);
+    return api.get(`/simpanan/rekening/${id}`);
   },
 
   getMutasiByRekeningId(rekeningId) {
-    return axios.get(`${API_URL}/rekening/${rekeningId}/mutasi`);
+    return api.get(`/simpanan/rekening/${rekeningId}/mutasi`);
   },
 
   createRekening(data) {
-    return axios.post(`${API_URL}/rekening`, data);
+    return api.post("/simpanan/rekening", data);
   },
 
   createSetoran(rekeningId, data) {
-    return axios.post(`${API_URL}/rekening/${rekeningId}/setor`, data);
+    return api.post(`/simpanan/rekening/${rekeningId}/setor`, data);
   },
 
   createPenarikan(rekeningId, data) {
-    return axios.post(`${API_URL}/rekening/${rekeningId}/tarik`, data);
+    return api.post(`/simpanan/rekening/${rekeningId}/tarik`, data);
+  },
+
+  exportToExcel(params) {
+    return api.get("/simpanan/export/excel", {
+      params,
+      responseType: "blob",
+    });
   },
 };
+
+export default SimpananService;

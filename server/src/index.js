@@ -40,7 +40,9 @@ import periodeRoutes from './routes/periodeRoutes.js';
 import jurnalRoutes from './routes/jurnalRoutes.js'; // <-- IMPORT BARU
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import memberRoutes from './routes/memberRoutes.js';
-import shuPemerataanRoutes from './routes/shuPemerataanRoutes.js'; 
+import shuPemerataanRoutes from './routes/shuPemerataanRoutes.js';
+import kasBankRoutes from './routes/kasBankRoutes.js'; // <-- TAMBAHKAN BARIS INI
+
 
 // Inisialisasi aplikasi express
 const app = express();
@@ -71,6 +73,7 @@ app.use('/api/toko', tokoRoutes); // <-- GUNAKAN ROUTE BARU
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/member', memberRoutes);
 app.use('/api/shu-pemerataan', shuPemerataanRoutes);
+app.use('/api/kas-bank', kasBankRoutes); // <-- TAMBAHKAN BARIS INI
 
 
 

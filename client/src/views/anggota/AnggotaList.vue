@@ -36,7 +36,7 @@
           </button>
         </div>
 
-        <!-- Tombol Impor dan Tambah Anggota -->
+        <!-- Tombol Impor, Ekspor Excel, dan Tambah Anggota -->
         <div class="flex gap-2">
           <router-link to="/data-master/anggota/impor">
             <button
@@ -46,6 +46,15 @@
               <span>Impor</span>
             </button>
           </router-link>
+          <button
+            @click="handleExport"
+            :disabled="isExporting"
+            class="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <i v-if="isExporting" class="fas fa-spinner fa-spin"></i>
+            <i v-else class="fas fa-file-excel"></i>
+            <span>{{ isExporting ? "Mengekspor..." : "Ekspor Excel" }}</span>
+          </button>
           <router-link to="/data-master/anggota/tambah">
             <button
               class="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm hover:shadow-md"
@@ -112,7 +121,7 @@
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr
-              v-for="item in filteredAnggota"
+              v-for="item in anggota"
               :key="item.id"
               class="hover:bg-gray-50 transition-colors"
             >
@@ -175,7 +184,7 @@
             </tr>
 
             <!-- Tampilkan pesan jika tidak ada data yang ditemukan -->
-            <tr v-if="filteredAnggota.length === 0">
+            <tr v-if="anggota.length === 0">
               <td colspan="5" class="px-6 py-12 text-center">
                 <div
                   class="flex flex-col items-center justify-center text-gray-500"
@@ -190,6 +199,46 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div
+      class="flex flex-col sm:flex-row items-center justify-between mt-6 gap-4"
+    >
+      <div class="text-sm text-gray-600">
+        Menampilkan {{ (currentPage - 1) * itemsPerPage + 1 }} -
+        {{ Math.min(currentPage * itemsPerPage, totalItems) }} dari
+        {{ totalItems }} anggota
+      </div>
+      <div class="flex gap-1">
+        <button
+          @click="changePage(currentPage - 1)"
+          :disabled="currentPage === 1"
+          class="px-3 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Sebelumnya
+        </button>
+        <button
+          v-for="page in totalPages"
+          :key="page"
+          @click="changePage(page)"
+          :class="[
+            'px-3 py-1.5 rounded-md border',
+            page === currentPage
+              ? 'bg-indigo-600 text-white border-indigo-600'
+              : 'border-gray-300 text-gray-700 hover:bg-gray-50',
+          ]"
+        >
+          {{ page }}
+        </button>
+        <button
+          @click="changePage(currentPage + 1)"
+          :disabled="currentPage === totalPages"
+          class="px-3 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Berikutnya
+        </button>
       </div>
     </div>
 
@@ -239,7 +288,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, watch } from "vue";
 import AnggotaService from "@/services/anggota.service.js";
 import { useToast } from "vue-toastification";
 
@@ -250,27 +299,48 @@ const searchTerm = ref("");
 const showDeleteModal = ref(false);
 const selectedAnggotaId = ref(null);
 const selectedAnggotaName = ref("");
-
-const filteredAnggota = computed(() => {
-  if (!searchTerm.value) {
-    return anggota.value;
-  }
-  return anggota.value.filter((item) =>
-    item.nama.toLowerCase().includes(searchTerm.value.toLowerCase())
-  );
-});
+const currentPage = ref(1);
+const totalPages = ref(0);
+const totalItems = ref(0);
+const isExporting = ref(false);
+const itemsPerPage = 10;
+let searchTimeout = null;
 
 const fetchAnggota = async () => {
   isLoading.value = true;
   try {
-    const response = await AnggotaService.getAll();
-    anggota.value = response.data;
+    const response = await AnggotaService.getAll({
+      page: currentPage.value,
+      limit: itemsPerPage,
+      search: searchTerm.value,
+    });
+    anggota.value = response.data.data;
+    totalItems.value = response.data.totalItems;
+    totalPages.value = response.data.totalPages;
+    currentPage.value = response.data.currentPage;
   } catch (error) {
     toast.error("Gagal memuat data anggota.");
   } finally {
     isLoading.value = false;
   }
 };
+
+const changePage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+    fetchAnggota();
+  }
+};
+
+watch(searchTerm, () => {
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
+  searchTimeout = setTimeout(() => {
+    currentPage.value = 1;
+    fetchAnggota();
+  }, 500);
+});
 
 const deleteAnggota = (id) => {
   const anggotaItem = anggota.value.find((item) => item.id === id);
@@ -295,6 +365,30 @@ const confirmDelete = async () => {
       selectedAnggotaId.value = null;
       selectedAnggotaName.value = "";
     }
+  }
+};
+
+const handleExport = async () => {
+  isExporting.value = true;
+  try {
+    const response = await AnggotaService.exportToExcel();
+    const blob = new Blob([response.data], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "daftar_anggota.xlsx");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    toast.success("Ekspor Excel berhasil.");
+  } catch (error) {
+    toast.error("Gagal mengekspor data ke Excel.");
+    console.error("Error saat ekspor Excel:", error);
+  } finally {
+    isExporting.value = false;
   }
 };
 

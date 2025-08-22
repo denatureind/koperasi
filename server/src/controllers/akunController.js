@@ -22,3 +22,15 @@ export const getAkunKewajiban = async (req, res) => {
     res.status(500).json({ message: 'Gagal mengambil data' });
   }
 };
+
+export const getAkunUntukKasBank = async (req, res) => {
+  try {
+    // Kueri diperbaiki untuk menggunakan 'kelompok_akun'
+    const query = "SELECT id, nama_akun FROM kode_akun WHERE kelompok_akun = 'Kas dan Bank' ORDER BY kode";
+    const result = await db.query(query);
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error mengambil akun untuk kas & bank:', error);
+    res.status(500).json({ message: 'Gagal mengambil data akun' });
+  }
+};

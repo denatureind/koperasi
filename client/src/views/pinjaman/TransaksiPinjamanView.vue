@@ -8,11 +8,11 @@
     >
       <div>
         <h1 class="text-2xl font-bold text-gray-800 flex items-center">
-          <i class="fas fa-exchange-alt text-indigo-600 mr-3"></i>
-          Transaksi Simpanan
+          <i class="fas fa-file-invoice-dollar text-indigo-600 mr-3"></i>
+          Transaksi Pinjaman
         </h1>
         <p class="text-gray-500 mt-1">
-          Riwayat semua transaksi simpanan anggota koperasi
+          Riwayat semua pembayaran angsuran pinjaman dari anggota.
         </p>
       </div>
 
@@ -25,7 +25,7 @@
         <input
           type="text"
           v-model="searchTerm"
-          placeholder="Cari nama atau no. rekening..."
+          placeholder="Cari nama atau no. pinjaman..."
           class="pl-10 py-2.5 block w-full rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500 transition-all duration-300"
         />
       </div>
@@ -52,13 +52,13 @@
               scope="col"
               class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
-              Tanggal
+              Tanggal Bayar
             </th>
             <th
               scope="col"
               class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
-              No. Rekening
+              No. Pinjaman
             </th>
             <th
               scope="col"
@@ -68,15 +68,21 @@
             </th>
             <th
               scope="col"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
-              Jenis Transaksi
+              Pokok Dibayar
             </th>
             <th
               scope="col"
               class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
-              Jumlah
+              Jasa Dibayar
+            </th>
+            <th
+              scope="col"
+              class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Total Bayar
             </th>
           </tr>
         </thead>
@@ -89,16 +95,9 @@
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="text-sm text-gray-900">
                 {{
-                  trx.tgl_transaksi
-                    ? new Date(trx.tgl_transaksi).toLocaleDateString("id-ID")
+                  trx.tgl_pembayaran
+                    ? new Date(trx.tgl_pembayaran).toLocaleDateString("id-ID")
                     : "-"
-                }}
-              </div>
-              <div class="text-xs text-gray-500">
-                {{
-                  trx.tgl_transaksi
-                    ? new Date(trx.tgl_transaksi).toLocaleTimeString("id-ID")
-                    : ""
                 }}
               </div>
             </td>
@@ -106,54 +105,36 @@
               <span
                 class="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-md text-xs font-medium"
               >
-                {{ trx.no_rekening }}
+                {{ trx.no_pinjaman }}
               </span>
             </td>
             <td class="px-6 py-4">
-              <div class="flex items-center">
-                <div
-                  class="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3"
-                >
-                  <i class="fas fa-user text-indigo-600"></i>
-                </div>
-                <div class="text-sm font-medium text-gray-900">
-                  {{ trx.nama_anggota }}
-                </div>
+              <div class="text-sm font-medium text-gray-900">
+                {{ trx.nama_anggota }}
               </div>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-              <span
-                :class="{
-                  'bg-green-100 text-green-800':
-                    trx.jenis_transaksi === 'Setor',
-                  'bg-amber-100 text-amber-800':
-                    trx.jenis_transaksi === 'Tarik',
-                }"
-                class="px-3 py-1 rounded-full text-xs font-medium flex items-center w-min"
-              >
-                <i
-                  :class="{
-                    'fas fa-arrow-down mr-1': trx.jenis_transaksi === 'Setor',
-                    'fas fa-arrow-up mr-1': trx.jenis_transaksi === 'Tarik',
-                  }"
-                ></i>
-                {{ trx.jenis_transaksi }}
-              </span>
+            <td
+              class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900"
+            >
+              {{ formatUang(trx.pokok_dibayar) }}
             </td>
             <td
-              class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
-              :class="
-                trx.jenis_transaksi === 'Setor'
-                  ? 'text-green-600'
-                  : 'text-amber-600'
-              "
+              class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900"
             >
-              {{ trx.jenis_transaksi === "Setor" ? "+" : "-" }}
-              {{ formatUang(trx.jumlah) }}
+              {{ formatUang(trx.jasa_dibayar) }}
+            </td>
+            <td
+              class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-indigo-700"
+            >
+              {{
+                formatUang(
+                  parseFloat(trx.pokok_dibayar) + parseFloat(trx.jasa_dibayar)
+                )
+              }}
             </td>
           </tr>
           <tr v-if="filteredTransaksi.length === 0">
-            <td colspan="5" class="px-6 py-12 text-center">
+            <td colspan="6" class="px-6 py-12 text-center">
               <div
                 class="flex flex-col items-center justify-center text-gray-500"
               >
@@ -191,7 +172,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from "vue";
-import SimpananService from "@/services/simpanan.service.js";
+import PinjamanService from "@/services/pinjaman.service.js";
 
 const transaksiList = ref([]);
 const isLoading = ref(true);
@@ -205,37 +186,37 @@ const filteredTransaksi = computed(() => {
   return transaksiList.value.filter(
     (trx) =>
       (trx.nama_anggota && trx.nama_anggota.toLowerCase().includes(search)) ||
-      (trx.no_rekening && trx.no_rekening.toLowerCase().includes(search))
+      (trx.no_pinjaman && trx.no_pinjaman.toLowerCase().includes(search))
   );
 });
 
 const fetchAllTransaksi = async () => {
   isLoading.value = true;
   try {
-    const response = await SimpananService.getAllTransaksi();
+    const response = await PinjamanService.getAllTransaksi();
     transaksiList.value = response.data;
   } catch (error) {
-    console.error("Error fetching all transaksi:", error);
+    console.error("Error fetching loan transactions:", error);
   } finally {
     isLoading.value = false;
   }
 };
 
 const formatUang = (angka) =>
-  new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(
-    angka || 0
-  );
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(angka || 0);
 
 onMounted(fetchAllTransaksi);
 </script>
 
 <style scoped>
-/* Smooth transition for table rows */
 tr {
   transition: background-color 0.2s ease;
 }
 
-/* Animation for new transactions */
 @keyframes highlight {
   from {
     background-color: rgba(99, 102, 241, 0.1);

@@ -125,6 +125,12 @@
                 >
                   <i class="fas fa-align-left mr-1"></i> Deskripsi
                 </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold text-indigo-700 uppercase tracking-wider"
+                >
+                  Aksi
+                </th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
@@ -157,6 +163,20 @@
                 <td class="px-6 py-4 text-gray-600">
                   {{ item.deskripsi || "-" }}
                 </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button
+                    @click="openEditModal(item)"
+                    class="text-indigo-600 hover:text-indigo-900 mr-3"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    @click="openDeleteModal(item)"
+                    class="text-red-600 hover:text-red-900"
+                  >
+                    Hapus
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -172,6 +192,101 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Edit -->
+    <div
+      v-if="isEditModalOpen"
+      class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center"
+    >
+      <div class="relative p-4 w-full max-w-md">
+        <div class="relative bg-white rounded-xl shadow-lg p-6">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            Edit Jenis Pinjaman
+          </h3>
+          <form @submit.prevent="handleUpdate">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                Nama Jenis Pinjaman
+              </label>
+              <input
+                type="text"
+                v-model="editingItem.nama_jenis"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500"
+                required
+              />
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                Tingkat Jasa (%)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                v-model="editingItem.tingkat_jasa_persen"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500"
+                required
+              />
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                Deskripsi (Opsional)
+              </label>
+              <input
+                type="text"
+                v-model="editingItem.deskripsi"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500"
+              />
+            </div>
+            <div class="flex justify-end space-x-3">
+              <button
+                type="button"
+                @click="isEditModalOpen = false"
+                class="px-4 py-2 text-gray-700 bg-gray-200 rounded-xl hover:bg-gray-300"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                class="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"
+              >
+                Simpan Perubahan
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Hapus -->
+    <div
+      v-if="isDeleteModalOpen"
+      class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center"
+    >
+      <div class="relative p-4 w-full max-w-md">
+        <div class="relative bg-white rounded-xl shadow-lg p-6">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            Konfirmasi Hapus
+          </h3>
+          <p class="text-gray-600 mb-6">
+            Apakah Anda yakin ingin menghapus "{{ deletingItem.nama_jenis }}"?
+          </p>
+          <div class="flex justify-end space-x-3">
+            <button
+              @click="isDeleteModalOpen = false"
+              class="px-4 py-2 text-gray-700 bg-gray-200 rounded-xl hover:bg-gray-300"
+            >
+              Batal
+            </button>
+            <button
+              @click="confirmDelete"
+              class="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700"
+            >
+              Ya, Hapus
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -182,6 +297,10 @@ import { useToast } from "vue-toastification";
 
 const listJenis = ref([]);
 const form = ref({ nama_jenis: "", tingkat_jasa_persen: 1.0, deskripsi: "" });
+const isEditModalOpen = ref(false);
+const editingItem = ref(null);
+const isDeleteModalOpen = ref(false);
+const deletingItem = ref(null);
 const toast = useToast();
 
 const fetchData = async () => {
@@ -201,6 +320,38 @@ const handleSubmit = async () => {
     fetchData();
   } catch (error) {
     toast.error("Gagal menyimpan.");
+  }
+};
+
+const openEditModal = (item) => {
+  editingItem.value = { ...item };
+  isEditModalOpen.value = true;
+};
+
+const handleUpdate = async () => {
+  try {
+    await JenisPinjamanService.update(editingItem.value.id, editingItem.value);
+    toast.success("Jenis pinjaman berhasil diperbarui!");
+    isEditModalOpen.value = false;
+    fetchData();
+  } catch (error) {
+    toast.error("Gagal memperbarui.");
+  }
+};
+
+const openDeleteModal = (item) => {
+  deletingItem.value = item;
+  isDeleteModalOpen.value = true;
+};
+
+const confirmDelete = async () => {
+  try {
+    await JenisPinjamanService.delete(deletingItem.value.id);
+    toast.success("Jenis pinjaman berhasil dihapus!");
+    isDeleteModalOpen.value = false;
+    fetchData();
+  } catch (error) {
+    toast.error("Gagal menghapus.");
   }
 };
 

@@ -22,6 +22,27 @@
     <div class="border-t border-gray-200 pt-6">
       <form @submit.prevent="handleSubmit" class="space-y-6">
         <div class="form-group">
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            <i class="fas fa-tag text-indigo-500 mr-2"></i>
+            Jenis Pinjaman
+          </label>
+          <select
+            v-model="selectedJenisId"
+            class="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 transition-all duration-300"
+            required
+          >
+            <option value="" disabled selected>Pilih Jenis Pinjaman</option>
+            <option
+              v-for="jenis in listJenisPinjaman"
+              :key="jenis.id"
+              :value="jenis.id"
+            >
+              {{ jenis.nama_jenis }} ({{ jenis.tingkat_jasa_persen }}%)
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
           <label
             for="jumlah_pinjaman"
             class="block text-sm font-medium text-gray-700 mb-1.5"
@@ -87,7 +108,8 @@
                 id="tingkat_jasa_persen"
                 v-model="formData.tingkat_jasa_persen"
                 required
-                class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 transition-all duration-300"
+                readonly
+                class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl bg-gray-100 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 transition-all duration-300"
                 placeholder="Persentase jasa"
               />
               <div
@@ -175,10 +197,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import AnggotaService from "@/services/anggota.service.js";
 import PinjamanService from "@/services/pinjaman.service.js";
+import JenisPinjamanService from "@/services/jenisPinjaman.service.js";
 import { useToast } from "vue-toastification";
 
 const router = useRouter();
@@ -187,12 +210,25 @@ const toast = useToast();
 const anggotaId = route.params.anggotaId;
 
 const anggota = ref(null);
+const listJenisPinjaman = ref([]);
+const selectedJenisId = ref(null);
 const formData = ref({
   anggota_id: parseInt(anggotaId),
   jumlah_pinjaman: 0,
   tenor: 12,
   tingkat_jasa_persen: 1,
   tgl_pencairan: new Date().toISOString().split("T")[0],
+});
+
+watch(selectedJenisId, (newVal) => {
+  if (newVal) {
+    const selectedJenis = listJenisPinjaman.value.find(
+      (jenis) => jenis.id === newVal
+    );
+    if (selectedJenis) {
+      formData.value.tingkat_jasa_persen = selectedJenis.tingkat_jasa_persen;
+    }
+  }
 });
 
 const estimasi = computed(() => {
@@ -237,9 +273,12 @@ onMounted(async () => {
       const response = await AnggotaService.getById(anggotaId);
       anggota.value = response.data;
     }
+
+    const jenisResponse = await JenisPinjamanService.getAll();
+    listJenisPinjaman.value = jenisResponse.data;
   } catch (error) {
-    console.error("Gagal mengambil data anggota:", error);
-    toast.error("Gagal mengambil data anggota.");
+    console.error("Gagal mengambil data:", error);
+    toast.error("Gagal mengambil data.");
   }
 });
 </script>

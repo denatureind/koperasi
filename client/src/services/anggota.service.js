@@ -3,8 +3,8 @@ import axios from "axios";
 const API_URL = "/api/anggota";
 
 const AnggotaService = {
-  getAll() {
-    return axios.get(API_URL);
+  getAll(params) {
+    return axios.get(API_URL, { params });
   },
   getById(id) {
     return axios.get(`${API_URL}/${id}`);
@@ -27,6 +27,13 @@ const AnggotaService = {
   // --- FUNGSI BARU ---
   resetPassword(data) {
     return axios.put(`${API_URL}/reset-password`, data);
+  },
+
+  // --- FUNGSI BARU UNTUK EKSPOR EXCEL ---
+  exportToExcel() {
+    return axios.get(`${API_URL}/export/excel`, {
+      responseType: "blob",
+    });
   },
 };
 

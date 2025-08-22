@@ -7,7 +7,8 @@ import {
   createPenarikan,
   getRekeningById,
   getSimpananSummary,
-  getAllTransaksi
+  getAllTransaksi,
+  exportSimpananToExcel
 } from '../controllers/simpananController.js';
 
 const router = express.Router();
@@ -17,6 +18,9 @@ router.get('/rekening', getSimpananSummary);
 
 // GET /api/simpanan/transaksi -> Mengambil SEMUA transaksi
 router.get('/transaksi', getAllTransaksi);
+
+// GET /api/simpanan/export/excel -> Ekspor data ke Excel
+router.get('/export/excel', exportSimpananToExcel);
 
 // --- ROUTE GET LAINNYA ---
 router.get('/rekening/anggota/:anggotaId', getRekeningByAnggotaId);

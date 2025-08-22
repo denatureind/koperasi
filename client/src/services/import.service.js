@@ -14,6 +14,17 @@ const ImportService = {
     });
   },
 
+  analyzeSaldoSimpanan(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    return axios.post(`${API_URL}/saldo-simpanan/analyze`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
   importSaldoSimpanan(file) {
     const formData = new FormData();
     formData.append("file", file);

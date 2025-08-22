@@ -1,12 +1,12 @@
 <template>
   <div class="flex flex-col min-h-screen bg-gray-50 font-sans">
-    <!-- Enhanced Horizontal Navigation -->
+    <!-- Modern Glass Header -->
     <header
-      class="sticky top-0 z-50 bg-white shadow-md border-b border-gray-200"
+      class="sticky top-0 z-50 bg-white/80 backdrop-blur-lg shadow-sm border-b border-gray-100"
     >
       <div class="max-w-7xl mx-auto px-6">
         <div class="flex justify-between items-center h-16">
-          <!-- Logo -->
+          <!-- Enhanced Logo -->
           <div class="flex items-center space-x-3">
             <div
               class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center shadow-lg"
@@ -14,14 +14,16 @@
               <i class="fas fa-calculator text-xl text-white"></i>
             </div>
             <div>
-              <div class="font-bold text-xl tracking-wide">
+              <div class="font-bold text-xl tracking-wide text-gray-800">
                 Bina<span class="text-indigo-600 font-extrabold">Makmur</span>
               </div>
-              <div class="text-xs text-gray-500">Koperasi SMAN 1 Majenang</div>
+              <div class="text-xs text-gray-500 font-medium tracking-wide">
+                Koperasi SMAN 1 Majenang
+              </div>
             </div>
           </div>
 
-          <!-- Main Navigation -->
+          <!-- Modern Navigation -->
           <nav class="hidden md:flex space-x-1 h-full">
             <router-link to="/" class="nav-item" active-class="nav-item-active">
               <i class="fas fa-home mr-2"></i>
@@ -32,9 +34,13 @@
               <button class="nav-item">
                 <i class="fas fa-database mr-2"></i>
                 Data Management
-                <i class="fas fa-chevron-down ml-2 text-xs"></i>
+                <i
+                  class="fas fa-chevron-down ml-2 text-xs transition-transform group-hover:rotate-180"
+                ></i>
               </button>
-              <div class="dropdown-menu">
+              <div
+                class="dropdown-menu shadow-xl rounded-xl border border-gray-100"
+              >
                 <router-link
                   to="/data-master"
                   class="dropdown-item"
@@ -49,9 +55,13 @@
               <button class="nav-item">
                 <i class="fas fa-coins mr-2"></i>
                 Financial Operations
-                <i class="fas fa-chevron-down ml-2 text-xs"></i>
+                <i
+                  class="fas fa-chevron-down ml-2 text-xs transition-transform group-hover:rotate-180"
+                ></i>
               </button>
-              <div class="dropdown-menu">
+              <div
+                class="dropdown-menu shadow-xl rounded-xl border border-gray-100"
+              >
                 <router-link
                   to="/simpanan"
                   class="dropdown-item"
@@ -66,6 +76,13 @@
                 >
                   Pinjaman
                 </router-link>
+                <router-link
+                  to="/kas-bank/akun"
+                  class="dropdown-item"
+                  active-class="dropdown-item-active"
+                >
+                  Kas & Bank
+                </router-link>
               </div>
             </div>
 
@@ -73,9 +90,13 @@
               <button class="nav-item">
                 <i class="fas fa-file-invoice-dollar mr-2"></i>
                 Accounting & Reports
-                <i class="fas fa-chevron-down ml-2 text-xs"></i>
+                <i
+                  class="fas fa-chevron-down ml-2 text-xs transition-transform group-hover:rotate-180"
+                ></i>
               </button>
-              <div class="dropdown-menu">
+              <div
+                class="dropdown-menu shadow-xl rounded-xl border border-gray-100"
+              >
                 <router-link
                   to="/pembukuan"
                   class="dropdown-item"
@@ -96,42 +117,56 @@
 
           <!-- User Controls -->
           <div class="flex items-center space-x-4">
-            <!-- Period Selector -->
-
             <!-- User Info -->
             <div class="hidden md:flex items-center text-sm text-gray-700">
-              <i class="fas fa-user-circle mr-2 text-indigo-500"></i>
-              <span class="font-medium truncate max-w-xs">{{
-                authStore.user?.nama_lengkap || "Administrator"
-              }}</span>
+              <div
+                class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center mr-2"
+              >
+                <i class="fas fa-user text-indigo-600 text-sm"></i>
+              </div>
+              <span class="font-medium truncate max-w-xs">
+                {{ authStore.user?.nama_lengkap || "Administrator" }}
+              </span>
             </div>
 
             <!-- Logout Button -->
             <button
               @click="handleLogout"
-              class="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-rose-50 to-rose-100 text-rose-600 rounded-xl border border-rose-200 hover:shadow-md transition-all duration-300 hover:scale-[1.03] group"
+              class="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-rose-50 to-rose-100 text-rose-600 rounded-xl border border-rose-200 hover:shadow-md transition-all duration-300 group shadow-sm"
             >
               <i
-                class="fas fa-sign-out-alt transition-transform group-hover:scale-125"
+                class="fas fa-sign-out-alt transition-transform group-hover:scale-110"
               ></i>
               <span class="font-medium hidden md:inline">Logout</span>
             </button>
 
-            <!-- Mobile Menu Button -->
+            <!-- Modern Mobile Menu Button -->
             <button
               @click="mobileMenuOpen = !mobileMenuOpen"
-              class="md:hidden text-gray-500 hover:text-gray-700"
+              class="md:hidden text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100"
             >
-              <i class="fas fa-bars text-xl"></i>
+              <svg
+                class="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                ></path>
+              </svg>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Mobile Navigation -->
+      <!-- Enhanced Mobile Navigation -->
       <div
         v-show="mobileMenuOpen"
-        class="md:hidden bg-white border-t border-gray-200"
+        class="md:hidden bg-white/95 backdrop-blur-sm border-t border-gray-100"
       >
         <div class="px-2 pt-2 pb-3 space-y-1">
           <router-link
@@ -202,6 +237,14 @@
             >
               Pinjaman
             </router-link>
+            <router-link
+              to="/kas-bank/akun"
+              class="mobile-subnav-item"
+              active-class="mobile-subnav-item-active"
+              @click="mobileMenuOpen = false"
+            >
+              Kas & Bank
+            </router-link>
           </div>
 
           <div
@@ -243,90 +286,166 @@
     </header>
 
     <!-- Main Content -->
-    <main class="flex-1 py-6">
+    <main class="flex-1 py-8">
       <div class="max-w-7xl mx-auto px-6 w-full">
-        <!-- Page Title -->
-        <div class="mb-6">
-          <h1 class="text-2xl md:text-3xl font-bold text-gray-800">
-            {{ currentPageTitle }}
-          </h1>
-          <div class="w-16 h-1 bg-indigo-600 rounded-full mt-2"></div>
-        </div>
-        <div v-if="isLaporanActive" class="form-control w-48">
-          <select
-            v-model="periodeTerpilih"
-            @change="updatePeriode"
-            class="select select-bordered select-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 transition-all"
+        <!-- Enhanced Page Title -->
+        <div class="mb-8">
+          <div
+            class="flex flex-col md:flex-row md:items-center justify-between gap-4"
           >
-            <option disabled :value="null">Pilih Periode Laporan</option>
-            <option
-              v-for="p in laporanStore.periodeList"
-              :key="p.id"
-              :value="p.id"
+            <div class="flex-1">
+              <div class="flex items-center gap-3">
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-800">
+                  {{ currentPageTitle }}
+                </h1>
+                <div
+                  class="w-8 h-1.5 bg-gradient-to-r from-indigo-500 to-indigo-700 rounded-full"
+                ></div>
+              </div>
+              <div class="mt-2 text-gray-500 text-sm">
+                {{ getPageSubtitle(currentPageTitle) }}
+              </div>
+            </div>
+            <div
+              v-if="isLaporanActive && laporanStore.periodeList"
+              class="form-control"
             >
-              {{ p.nama_periode }}
-            </option>
-          </select>
+              <div class="relative">
+                <select
+                  v-model="periodeTerpilih"
+                  @change="updatePeriode"
+                  class="pl-4 pr-10 py-2.5 text-sm bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 transition-all appearance-none shadow-sm"
+                >
+                  <option disabled :value="null">Pilih Periode Laporan</option>
+                  <option
+                    v-for="p in laporanStore.periodeList"
+                    :key="p.id"
+                    :value="p.id"
+                  >
+                    {{ p.nama_periode }}
+                  </option>
+                </select>
+                <div
+                  class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500"
+                >
+                  <i class="fas fa-chevron-down text-xs"></i>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Sub Navigation -->
-        <div class="sub-nav-container mb-6">
+        <!-- Modern Sub Navigation -->
+        <div
+          class="sub-nav-container mb-8 bg-white rounded-xl p-1 shadow-sm border border-gray-100"
+        >
           <nav v-if="isDataMasterActive" class="sub-nav">
-            <router-link to="/data-master/anggota">Anggota</router-link>
+            <router-link to="/data-master/anggota" class="sub-nav-item">
+              <i class="fas fa-users mr-2 text-sm"></i>
+              Anggota
+            </router-link>
           </nav>
 
           <nav v-if="isSimpananActive" class="sub-nav">
-            <router-link to="/simpanan/rekening">Data Rekening</router-link>
-            <router-link to="/simpanan/transaksi">Data Transaksi</router-link>
-            <router-link to="/simpanan/konfigurasi">Konfigurasi</router-link>
-            <router-link to="/simpanan/impor-saldo">Impor Saldo</router-link>
+            <router-link to="/simpanan/rekening" class="sub-nav-item">
+              <i class="fas fa-piggy-bank mr-2 text-sm"></i>
+              Data Rekening
+            </router-link>
+            <router-link to="/simpanan/transaksi" class="sub-nav-item">
+              <i class="fas fa-exchange-alt mr-2 text-sm"></i>
+              Data Transaksi
+            </router-link>
+            <router-link to="/simpanan/konfigurasi" class="sub-nav-item">
+              <i class="fas fa-cog mr-2 text-sm"></i>
+              Konfigurasi
+            </router-link>
+            <router-link to="/simpanan/impor-saldo" class="sub-nav-item">
+              <i class="fas fa-file-import mr-2 text-sm"></i>
+              Impor Saldo
+            </router-link>
           </nav>
 
           <nav v-if="isPinjamanActive" class="sub-nav">
-            <router-link to="/pinjaman/data">Data Pinjaman</router-link>
-            <router-link to="/pinjaman/transaksi">Data Transaksi</router-link>
-            <router-link to="/pinjaman/konfigurasi">Konfigurasi</router-link>
+            <router-link to="/pinjaman/data" class="sub-nav-item">
+              <i class="fas fa-hand-holding-usd mr-2 text-sm"></i>
+              Data Pinjaman
+            </router-link>
+            <router-link to="/pinjaman/transaksi" class="sub-nav-item">
+              <i class="fas fa-receipt mr-2 text-sm"></i>
+              Data Transaksi
+            </router-link>
+            <router-link to="/pinjaman/konfigurasi" class="sub-nav-item">
+              <i class="fas fa-cog mr-2 text-sm"></i>
+              Konfigurasi
+            </router-link>
           </nav>
 
           <nav v-if="isPembukuanActive" class="sub-nav">
-            <router-link to="/pembukuan/kode-akun">Kode Akun</router-link>
-            <router-link to="/pembukuan/jurnal-umum">Jurnal Umum</router-link>
-            <router-link to="/pembukuan/buku-besar">Buku Besar</router-link>
-            <router-link to="/pembukuan/periode">Manajemen Periode</router-link>
-            <router-link to="/pembukuan/konfigurasi-shu"
-              >Konfigurasi SHU</router-link
-            >
-            <router-link to="/pembukuan/input-shu">
+            <router-link to="/pembukuan/kode-akun" class="sub-nav-item">
+              <i class="fas fa-list-ol mr-2 text-sm"></i>
+              Kode Akun
+            </router-link>
+            <router-link to="/pembukuan/jurnal-umum" class="sub-nav-item">
+              <i class="fas fa-book mr-2 text-sm"></i>
+              Jurnal Umum
+            </router-link>
+            <router-link to="/pembukuan/buku-besar" class="sub-nav-item">
+              <i class="fas fa-book-open mr-2 text-sm"></i>
+              Buku Besar
+            </router-link>
+            <router-link to="/pembukuan/periode" class="sub-nav-item">
+              <i class="fas fa-calendar-alt mr-2 text-sm"></i>
+              Manajemen Periode
+            </router-link>
+            <router-link to="/pembukuan/konfigurasi-shu" class="sub-nav-item">
+              <i class="fas fa-percentage mr-2 text-sm"></i>
+              Konfigurasi SHU
+            </router-link>
+            <router-link to="/pembukuan/input-shu" class="sub-nav-item">
+              <i class="fas fa-tasks mr-2 text-sm"></i>
               Input SHU Pemerataan
             </router-link>
           </nav>
 
           <nav v-if="isLaporanActive" class="sub-nav">
-            <router-link to="/laporan/neraca">Laporan Neraca</router-link>
-            <router-link to="/laporan/laba-rugi">Laporan Laba Rugi</router-link>
-            <router-link to="/laporan/shu">Perhitungan SHU</router-link>
-            <router-link to="/toko"
-              ><i class="fas fa-store"></i> Toko</router-link
-            >
+            <router-link to="/laporan/neraca" class="sub-nav-item">
+              <i class="fas fa-balance-scale mr-2 text-sm"></i>
+              Laporan Neraca
+            </router-link>
+            <router-link to="/laporan/laba-rugi" class="sub-nav-item">
+              <i class="fas fa-chart-line mr-2 text-sm"></i>
+              Laporan Laba Rugi
+            </router-link>
+            <router-link to="/laporan/shu" class="sub-nav-item">
+              <i class="fas fa-calculator mr-2 text-sm"></i>
+              Perhitungan SHU
+            </router-link>
+            <router-link to="/toko" class="sub-nav-item">
+              <i class="fas fa-store mr-2 text-sm"></i>
+              Toko
+            </router-link>
           </nav>
         </div>
 
         <!-- Content Area -->
-        <div class="content-container">
-          <router-view class="fade-in" />
+        <div
+          class="content-container bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+        >
+          <router-view class="fade-in p-6" />
         </div>
       </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-white border-t border-gray-200 py-6">
+    <!-- Modern Footer -->
+    <footer class="bg-white border-t border-gray-100 py-6">
       <div class="max-w-7xl mx-auto px-6 text-center">
         <p class="font-medium text-gray-700">
-          {{ new Date().getFullYear() }} © Koperasi Bina Makmur - SMAN 1
+          {{ new Date().getFullYear() }} Â© Koperasi Bina Makmur - SMAN 1
           Majenang
         </p>
-        <p class="mt-1 text-gray-600">
-          Developed with <i class="fas fa-heart text-rose-500"></i> by EmbuN
+        <p class="mt-1 text-gray-600 flex items-center justify-center">
+          Developed with <i class="fas fa-heart text-rose-500 mx-1"></i> by
+          EmbuN
         </p>
       </div>
     </footer>
@@ -339,6 +458,7 @@ import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth.store.js";
 import { useLaporanStore } from "@/stores/laporan.store.js";
 
+// Inisialisasi store
 const authStore = useAuthStore();
 const laporanStore = useLaporanStore();
 const router = useRouter();
@@ -351,6 +471,21 @@ const pageTitles = {
   "/pinjaman": "Manajemen Pinjaman",
   "/pembukuan": "Pembukuan",
   "/laporan": "Laporan Keuangan",
+  "/kas-bank": "Kas & Bank",
+};
+
+// Fungsi untuk mendapatkan subtitle berdasarkan halaman
+const getPageSubtitle = (title) => {
+  const subtitles = {
+    Dashboard: "Ringkasan aktivitas koperasi",
+    "Data Master": "Kelola data anggota dan produk",
+    "Manajemen Simpanan": "Kelola simpanan anggota",
+    "Manajemen Pinjaman": "Kelola peminjaman anggota",
+    Pembukuan: "Sistem akuntansi koperasi",
+    "Laporan Keuangan": "Analisis kinerja keuangan",
+    "Kas & Bank": "Manajemen kas dan rekening bank",
+  };
+  return subtitles[title] || "Manajemen Koperasi Sekolah";
 };
 
 const currentPageTitle = ref("Dashboard");
@@ -382,18 +517,18 @@ const updatePeriode = () => {
 };
 
 const toggleMobileSubmenu = (menu) => {
-  if (mobileSubmenuOpen.value === menu) {
-    mobileSubmenuOpen.value = null;
-  } else {
-    mobileSubmenuOpen.value = menu;
-  }
+  mobileSubmenuOpen.value = mobileSubmenuOpen.value === menu ? null : menu;
 };
 
 onMounted(async () => {
-  await laporanStore.fetchPeriodeList();
-  if (laporanStore.periodeList.length > 0) {
-    periodeTerpilih.value = laporanStore.periodeList[0].id;
-    laporanStore.setPeriodeAktif(periodeTerpilih.value);
+  try {
+    await laporanStore.fetchPeriodeList();
+    if (laporanStore.periodeList?.length > 0) {
+      periodeTerpilih.value = laporanStore.periodeList[0].id;
+      laporanStore.setPeriodeAktif(periodeTerpilih.value);
+    }
+  } catch (error) {
+    console.error("Error fetching period list:", error);
   }
 });
 
@@ -409,21 +544,26 @@ const isLaporanActive = computed(
 </script>
 
 <style scoped>
-/* Navigation Styles */
+/* Modern Navigation Styles */
 .nav-item {
-  @apply flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50 rounded-lg transition-all duration-300 h-full;
+  @apply flex items-center px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-indigo-600 rounded-lg transition-all duration-300 h-full relative;
 }
 
 .nav-item-active {
-  @apply text-indigo-600 bg-indigo-50;
+  @apply text-indigo-600 font-semibold;
+}
+
+.nav-item-active::after {
+  content: "";
+  @apply absolute bottom-0 left-1/2 transform -translate-x-1/2 w-5 h-1 bg-indigo-600 rounded-full;
 }
 
 .dropdown-menu {
-  @apply absolute left-0 top-full mt-1 bg-white shadow-xl rounded-lg py-2 min-w-[240px] opacity-0 invisible transition-all duration-300 transform -translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 z-30;
+  @apply absolute left-0 top-full mt-1 bg-white shadow-lg rounded-xl py-2 min-w-[240px] opacity-0 invisible transition-all duration-300 transform -translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 z-30 border border-gray-100;
 }
 
 .dropdown-item {
-  @apply block px-6 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors;
+  @apply block px-6 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 transition-colors;
 }
 
 .dropdown-item-active {
@@ -432,7 +572,7 @@ const isLaporanActive = computed(
 
 /* Mobile Navigation */
 .mobile-nav-item {
-  @apply flex items-center px-4 py-3 text-gray-700 rounded-lg font-medium cursor-pointer;
+  @apply flex items-center px-4 py-3 text-gray-700 rounded-lg font-medium cursor-pointer transition-colors;
 }
 
 .mobile-nav-item-active {
@@ -440,45 +580,44 @@ const isLaporanActive = computed(
 }
 
 .mobile-subnav-item {
-  @apply block px-4 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg;
+  @apply block px-4 py-2.5 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors;
 }
 
 .mobile-subnav-item-active {
   @apply bg-gray-50 text-indigo-600 font-medium;
 }
 
-/* Sub Navigation */
+/* Modern Sub Navigation */
 .sub-nav-container {
-  @apply mb-6 bg-white rounded-xl shadow-sm p-1 border border-gray-200 max-w-7xl transition-all duration-300;
+  @apply mb-6;
 }
 
 .sub-nav {
-  @apply flex flex-wrap gap-1 rounded-lg overflow-hidden bg-gray-100;
+  @apply flex flex-wrap gap-2 rounded-xl overflow-x-auto;
 }
 
-.sub-nav a {
-  @apply px-4 py-2.5 text-sm text-gray-700 font-medium transition-all duration-300 relative bg-white;
+.sub-nav-item {
+  @apply px-4 py-3 text-sm text-gray-600 font-medium transition-all duration-300 relative flex items-center bg-white border border-gray-200 rounded-lg hover:border-indigo-300;
 }
 
-.sub-nav a:hover {
-  @apply text-indigo-600 bg-indigo-50;
+.sub-nav-item:hover {
+  @apply text-indigo-600;
 }
 
-.sub-nav a.router-link-exact-active,
-.sub-nav a.router-link-active {
-  @apply text-indigo-600 bg-indigo-50 font-semibold;
+.sub-nav-item.router-link-exact-active,
+.sub-nav-item.router-link-active {
+  @apply text-indigo-600 bg-indigo-50 border-indigo-200 font-semibold;
 }
 
-.sub-nav a.router-link-exact-active:after,
-.sub-nav a.router-link-active:after {
+.sub-nav-item.router-link-exact-active:after,
+.sub-nav-item.router-link-active:after {
   content: "";
-  @apply absolute bottom-0 left-0 right-0 h-1 bg-indigo-600 rounded-full;
-  animation: slideIn 0.3s ease-out;
+  @apply absolute bottom-0 left-1/2 transform -translate-x-1/2 w-5 h-1 bg-indigo-600 rounded-full;
 }
 
 /* Content Container */
 .content-container {
-  @apply bg-white rounded-2xl shadow-sm p-6 border border-gray-100 transition-all duration-300;
+  @apply transition-all duration-300;
 }
 
 /* Animations */
@@ -509,10 +648,10 @@ const isLaporanActive = computed(
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .sub-nav {
-    @apply overflow-x-auto flex-nowrap;
+    @apply overflow-x-auto flex-nowrap pb-1 -mx-1 px-1;
   }
 
-  .sub-nav a {
+  .sub-nav-item {
     @apply whitespace-nowrap;
   }
 }
