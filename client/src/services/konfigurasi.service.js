@@ -1,12 +1,19 @@
-import axios from "axios";
-const API_URL = "/api/konfigurasi";
+import api from "./api";
+
+const API_URL = "/konfigurasi";
 
 const KonfigurasiService = {
   getSHU() {
-    return axios.get(`${API_URL}/shu`);
+    return api.get(`${API_URL}/shu`);
   },
   updateSHU(data) {
-    return axios.put(`${API_URL}/shu`, data);
+    return api.put(`${API_URL}/shu`, data);
+  },
+  getPoinSukarela() {
+    return api.get(`${API_URL}/poin-sukarela`);
+  },
+  updatePoinSukarela(data) {
+    return api.put(`${API_URL}/poin-sukarela`, data);
   },
 };
 export default KonfigurasiService;

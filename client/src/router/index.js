@@ -149,6 +149,12 @@ const routes = [
         name: "konfigurasi-shu",
         component: () => import("@/views/pembukuan/KonfigurasiSHUView.vue"),
       },
+      {
+        path: "pembukuan/konfigurasi-poin",
+        name: "konfigurasi-poin",
+        component: () => import("@/views/pembukuan/KonfigurasiPoinView.vue"),
+      },
+
       // --- PERBAIKAN & PENEMPATAN RUTE BARU YANG BENAR ---
       {
         path: "pembukuan/input-shu",

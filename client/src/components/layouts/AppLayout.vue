@@ -401,6 +401,10 @@
               <i class="fas fa-percentage mr-2 text-sm"></i>
               Konfigurasi SHU
             </router-link>
+            <router-link to="/pembukuan/konfigurasi-poin" class="sub-nav-item">
+              <i class="fas fa-calculator mr-2 text-sm"></i>
+              Aturan Poin SHU
+            </router-link>
             <router-link to="/pembukuan/input-shu" class="sub-nav-item">
               <i class="fas fa-tasks mr-2 text-sm"></i>
               Input SHU Pemerataan
