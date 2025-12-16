@@ -1,11 +1,14 @@
-import axios from "axios";
-const API_URL = "http://localhost:5000/api/toko";
+import http from "../http-common"; // Mengambil settingan dari Langkah 2
 
-export default {
+class TokoService {
   getBelanjaBulanan(bulan, tahun) {
-    return axios.get(`${API_URL}/belanja?bulan=${bulan}&tahun=${tahun}`);
-  },
+    // Tidak ada lagi hardcode URL di sini
+    return http.get(`/toko/belanja?bulan=${bulan}&tahun=${tahun}`);
+  }
+
   simpanBelanjaBulanan(data) {
-    return axios.post(`${API_URL}/belanja`, data);
-  },
-};
+    return http.post(`/toko/belanja`, data);
+  }
+}
+
+export default new TokoService();
