@@ -277,9 +277,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { useLaporanStore } from "@/stores/laporan.store.js";
 import LaporanService from "@/services/laporan.service.js";
+import PeriodeService from "@/services/periode.service.js";
 import { useToast } from "vue-toastification";
 
 const shuData = ref(null);
@@ -287,7 +288,7 @@ const isLoading = ref(false);
 const laporanStore = useLaporanStore();
 const toast = useToast();
 const jasaBelanjaInput = ref(0);
-const sortOrder = ref("asc"); // 'asc' untuk A-Z, 'desc' untuk Z-A
+const sortOrder = ref("asc");
 
 const currentPeriodName = computed(() => {
   if (!laporanStore.periodeAktifId || !laporanStore.periodeList.length)
@@ -298,10 +299,53 @@ const currentPeriodName = computed(() => {
   return period ? period.nama_periode : "Belum dipilih";
 });
 
-// FUNGSI BARU UNTUK SORTIR
+// --- PERBAIKAN: FUNGSI DIDEFINISIKAN DULU (PINDAH KE ATAS) ---
+const loadSavedJasaBelanja = async (periodeId) => {
+  try {
+    // 1. Cek Input Jasa Belanja (Inputan kecil)
+    const resPeriode = await PeriodeService.getPeriodeById(periodeId);
+    if (resPeriode.data) {
+      jasaBelanjaInput.value =
+        parseFloat(resPeriode.data.total_jasa_belanja) || 0;
+    }
+
+    // 2. Cek Hasil Tabel SHU (Laporan Besar) - INI YANG BARU
+    const resHasil = await LaporanService.getHasilSHUTersimpan(periodeId);
+    if (resHasil.data && resHasil.data.isCached) {
+      // Jika ada data tersimpan, langsung tampilkan tabelnya!
+      shuData.value = resHasil.data;
+
+      // PENTING: Karena backend getHasilSHU tadi saya buat versi ringkas (hanya rincianAnggota),
+      // pastikan struktur objek shuData sesuai template Anda.
+      // Jika template Anda butuh data 'saldoLaba', 'distribusi', dll untuk ditampilkan di kartu atas,
+      // maka data itu harus ikut dikirim dari backend getHasilSHU (Langkah 2A).
+      // Untuk sekarang, tabel anggota akan muncul.
+    } else {
+      // Jika belum ada hitungan, kosongkan tabel
+      shuData.value = null;
+    }
+  } catch (error) {
+    console.error("Gagal memuat data tersimpan:", error);
+  }
+};
+
+// --- BARU SETELAHNYA DI-WATCH (PINDAH KE BAWAH) ---
+watch(
+  () => laporanStore.periodeAktifId,
+  async (newId) => {
+    if (newId) {
+      await loadSavedJasaBelanja(newId);
+    } else {
+      jasaBelanjaInput.value = 0;
+      shuData.value = null;
+    }
+  },
+  { immediate: true } // Karena immediate true, dia butuh fungsi di atas sudah siap
+);
+
+// FUNGSI SORTIR
 const sortedRincianAnggota = computed(() => {
   if (!shuData.value || !shuData.value.rincianAnggota) return [];
-  // Buat salinan array agar tidak mengubah data asli
   const dataToSort = [...shuData.value.rincianAnggota];
   return dataToSort.sort((a, b) => {
     if (sortOrder.value === "asc") {
@@ -320,6 +364,7 @@ const toggleSort = () => {
   sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
 };
 
+// TOTALS
 const totals = computed(() => {
   if (!shuData.value || !shuData.value.rincianAnggota) {
     return {
@@ -349,6 +394,7 @@ const totals = computed(() => {
   );
 });
 
+// HITUNG SHU (SIMPAN DULU BARU HITUNG)
 const fetchSHU = async () => {
   if (!laporanStore.periodeAktifId) {
     toast.error("Silakan pilih periode laporan terlebih dahulu.");
@@ -361,26 +407,31 @@ const fetchSHU = async () => {
 
   isLoading.value = true;
   shuData.value = null;
+
   try {
+    await LaporanService.simpanJasaBelanja({
+      periode_id: laporanStore.periodeAktifId,
+      total_jasa_belanja: jasaBelanjaInput.value,
+    });
+
     const response = await LaporanService.hitungSHU(
       laporanStore.periodeAktifId,
       jasaBelanjaInput.value
     );
+
     shuData.value = response.data;
-    toast.success("Perhitungan SHU berhasil diselesaikan.");
+    toast.success("Data disimpan & SHU berhasil dihitung.");
   } catch (error) {
-    toast.error("Gagal menghitung SHU.");
+    console.error(error);
+    toast.error("Gagal memproses SHU.");
   } finally {
     isLoading.value = false;
   }
 };
 
-// FUNGSI BARU UNTUK EKSPOR
 const exportToExcel = async () => {
   if (!shuData.value) {
-    toast.error(
-      "Tidak ada data untuk diekspor. Silakan hitung SHU terlebih dahulu."
-    );
+    toast.error("Tidak ada data untuk diekspor.");
     return;
   }
   try {

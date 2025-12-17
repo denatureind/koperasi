@@ -143,17 +143,23 @@ export const getLabaRugi = async (req, res) => {
 // =================================================================
 // FUNGSI hitungSHU DENGAN PENAMBAHAN SHU PEMERATAAN
 // =================================================================
+// =================================================================
+// FUNGSI hitungSHU (FINAL: DENGAN PENYIMPANAN KE DATABASE)
+// =================================================================
 export const hitungSHU = async (req, res) => {
     const { periode_id, jasa_belanja_dikembalikan } = req.query;
 
     if (!periode_id) {
         return res.status(400).json({ message: "ID Periode dibutuhkan" });
     }
+    
+    // Gunakan client untuk transaksi (BEGIN/COMMIT/ROLLBACK)
     const client = await db.connect();
 
     try {
         await client.query("BEGIN");
 
+        // 1. Ambil Data Periode
         const periodeResult = await client.query(
             "SELECT tgl_mulai, tgl_selesai FROM periode_akuntansi WHERE id = $1",
             [periode_id]
@@ -164,6 +170,7 @@ export const hitungSHU = async (req, res) => {
         const { tgl_mulai, tgl_selesai } = periodeResult.rows[0];
         const tahun = new Date(tgl_mulai).getFullYear();
 
+        // 2. Ambil Konfigurasi SHU
         const configs = (
             await client.query("SELECT kunci_konfigurasi, nilai FROM konfigurasi_shu")
         ).rows.reduce(
@@ -171,8 +178,12 @@ export const hitungSHU = async (req, res) => {
             {}
         );
 
+        // 3. Hitung SHU Kotor (Pendapatan - Beban)
         const labaRugiResult = await client.query(
-            `SELECT k.header_akun, SUM(j.kredit) - SUM(j.debit) as saldo FROM jurnal_umum j JOIN kode_akun k ON j.akun_id = k.id WHERE (k.header_akun = 'PENDAPATAN' OR k.header_akun = 'BEBAN') AND j.periode_id = $1 GROUP BY k.header_akun;`,
+            `SELECT k.header_akun, SUM(j.kredit) - SUM(j.debit) as saldo 
+             FROM jurnal_umum j JOIN kode_akun k ON j.akun_id = k.id 
+             WHERE (k.header_akun = 'PENDAPATAN' OR k.header_akun = 'BEBAN') 
+             AND j.periode_id = $1 GROUP BY k.header_akun;`,
             [periode_id]
         );
         let totalPendapatan = 0, totalBeban = 0;
@@ -182,6 +193,7 @@ export const hitungSHU = async (req, res) => {
         });
         const shuKotor = totalPendapatan - totalBeban;
 
+        // 4. Hitung Alokasi Dasar
         const jasaResult = await client.query(
             `SELECT COALESCE(SUM(kredit) - SUM(debit), 0) as total FROM jurnal_umum WHERE akun_id = 41 AND periode_id = $1;`,
             [periode_id]
@@ -199,7 +211,7 @@ export const hitungSHU = async (req, res) => {
             pengurus: saldoLaba * (configs.distribusi_pengurus_persen / 100),
         };
         
-        // --- Integrasi SHU Pemerataan ---
+        // 5. Ambil Data Pendukung (Pemerataan, Total Jasa, Total Belanja)
         const pemerataanRes = await client.query('SELECT anggota_id, jumlah FROM shu_pemerataan WHERE periode_id = $1', [periode_id]);
         const pemerataanMap = pemerataanRes.rows.reduce((map, row) => {
             map[row.anggota_id] = parseFloat(row.jumlah);
@@ -222,10 +234,12 @@ export const hitungSHU = async (req, res) => {
         );
         const totalBelanjaSemuaAnggota = parseFloat(totalBelanjaSemuaAnggotaResult.rows[0].total) || 1;
 
+        // 6. Loop Perhitungan Per Anggota
         for (const anggota of anggotaResult.rows) {
-            // Logika poin simpanan... (tidak berubah)
+            // --- A. Hitung Poin Simpanan ---
             const pokokWajibResult = await client.query(`SELECT COALESCE(SUM(saldo), 0) as total FROM rekening_simpanan WHERE anggota_id = $1 AND jenis_simpanan IN ('Pokok', 'Wajib')`, [anggota.id]);
             const poinPokokWajib = parseFloat(pokokWajibResult.rows[0].total) / 10000;
+            
             let poinSukarela = 0;
             const sukarelaResult = await client.query(`SELECT id FROM rekening_simpanan WHERE anggota_id = $1 AND jenis_simpanan = 'Sukarela'`, [anggota.id]);
             if (sukarelaResult.rows.length > 0) {
@@ -241,23 +255,24 @@ export const hitungSHU = async (req, res) => {
                     poinSukarela += saldoAkhirBulan / 12 / hargaSaham;
                 }
             }
+
             const lebaranResult = await client.query(`SELECT COALESCE(SUM(saldo), 0) as total FROM rekening_simpanan WHERE anggota_id = $1 AND jenis_simpanan = 'Lebaran'`, [anggota.id]);
             const poinLebaran = parseFloat(lebaranResult.rows[0].total) / 15000;
             const totalPoinPribadi = poinPokokWajib + poinSukarela + poinLebaran;
             totalPoinSimpananKeseluruhan += totalPoinPribadi;
 
-            // Logika SHU Pinjaman... (tidak berubah)
+            // --- B. Hitung SHU Pinjaman ---
             const jasaPribadiResult = await client.query(`SELECT COALESCE(SUM(ja.jasa_dibayar), 0) as total FROM jadwal_angsuran ja JOIN rekening_pinjaman rp ON ja.rekening_pinjaman_id = rp.id WHERE rp.anggota_id = $1 AND ja.tgl_pembayaran BETWEEN $2 AND $3`, [anggota.id, tgl_mulai, tgl_selesai]);
             const jasaPribadiDibayar = parseFloat(jasaPribadiResult.rows[0].total || 0);
             const shuDariPinjaman = (jasaPribadiDibayar / totalJasaDibayarSemuaAnggota) * alokasiUntukPeminjam;
 
-            // Logika SHU Belanja... (tidak berubah)
+            // --- C. Hitung SHU Belanja ---
             const belanjaPribadiResult = await client.query(`SELECT COALESCE(SUM(total_belanja), 0) as total FROM belanja_anggota WHERE anggota_id = $1 AND periode_id = $2`, [anggota.id, periode_id]);
             const belanjaPribadi = parseFloat(belanjaPribadiResult.rows[0].total || 0);
             const poinBelanja = belanjaPribadi / configs.harga_poin_belanja;
-            const shuDariBelanja = (belanjaPribadi / totalBelanjaSemuaAnggota) * parseFloat(jasa_belanja_dikembalikan || 0);
+            const shuDariBelanja = (belanjaPribadi / totalBelanjaSemuaAnggota) * parseFloat(jasa_belanja_dikembalikan || 0);            
             
-            // Ambil SHU Pemerataan
+            // --- D. Ambil SHU Pemerataan ---
             const shuPemerataan = pemerataanMap[anggota.id] || 0;
 
             rincianAnggota.push({
@@ -271,10 +286,11 @@ export const hitungSHU = async (req, res) => {
                 poinBelanja,
                 shuDariPinjaman,
                 shuDariBelanja,
-                shuPemerataan, // <-- Data baru
+                shuPemerataan,
             });
         }
 
+        // 7. Hitung Final Rupiah per Anggota
         const indeksPoin = totalPoinSimpananKeseluruhan > 0 ? danaUntukAnggotaViaSimpanan / totalPoinSimpananKeseluruhan : 0;
 
         rincianAnggota = rincianAnggota.map((anggota) => {
@@ -294,7 +310,33 @@ export const hitungSHU = async (req, res) => {
             };
         });
 
+        // =================================================================
+        // BAGIAN BARU: SIMPAN HASIL PERHITUNGAN KE DATABASE (PERSISTENCE)
+        // =================================================================
+        
+        // A. Hapus hasil perhitungan lama (jika ada) untuk periode ini agar tidak duplikat
+        await client.query("DELETE FROM hasil_shu_anggota WHERE periode_id = $1", [periode_id]);
+
+        // B. Simpan hasil perhitungan baru
+        for (const hasil of rincianAnggota) {
+            await client.query(`
+                INSERT INTO hasil_shu_anggota 
+                (periode_id, anggota_id, shu_simpanan, shu_pinjaman, shu_belanja, shu_pemerataan, total_diterima)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `, [
+                periode_id, 
+                hasil.anggota_id, 
+                hasil.shuTotalSimpanan, 
+                hasil.shuDariPinjaman, 
+                hasil.shuDariBelanja, 
+                hasil.shuPemerataan, 
+                hasil.shuTotalDiterima
+            ]);
+        }
+        // =================================================================
+
         await client.query("COMMIT");
+
         res.status(200).json({
             configs,
             saldoLaba,
@@ -305,6 +347,7 @@ export const hitungSHU = async (req, res) => {
             indeksPoin,
             rincianAnggota,
         });
+
     } catch (error) {
         await client.query("ROLLBACK");
         console.error("Error saat menghitung SHU:", error);
@@ -644,4 +687,80 @@ export const exportLabaRugi = async (req, res) => {
     console.error("Error saat ekspor SHU:", error);
     res.status(500).json({ message: "Gagal mengekspor laporan SHU." });
   }
+
+  
+};
+
+// --- TAMBAHAN BARU: Simpan Jasa Belanja ---
+export const simpanJasaBelanja = async (req, res) => {
+    const { periode_id, total_jasa_belanja } = req.body;
+
+    if (!periode_id) {
+        return res.status(400).json({ message: 'Periode ID dibutuhkan' });
+    }
+
+    try {
+        const query = `
+            UPDATE periode_akuntansi 
+            SET total_jasa_belanja = $1 
+            WHERE id = $2 
+            RETURNING *;
+        `;
+        const result = await db.query(query, [total_jasa_belanja || 0, periode_id]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Periode tidak ditemukan' });
+        }
+
+        res.status(200).json({ message: 'Jasa belanja berhasil disimpan', data: result.rows[0] });
+    } catch (error) {
+        console.error('Error saat menyimpan jasa belanja:', error);
+        res.status(500).json({ message: 'Gagal menyimpan data' });
+    }
+};
+
+// --- FUNGSI BARU: Mengambil SHU yang sudah tersimpan permanen ---
+export const getHasilSHU = async (req, res) => {
+    const { periode_id } = req.query;
+    try {
+        // Cek apakah ada data di tabel hasil_shu_anggota
+        const query = `
+            SELECT h.*, a.nama, a.kode_anggota 
+            FROM hasil_shu_anggota h
+            JOIN anggota a ON h.anggota_id = a.id
+            WHERE h.periode_id = $1
+            ORDER BY a.nama ASC;
+        `;
+        const result = await db.query(query, [periode_id]);
+
+        if (result.rows.length > 0) {
+             // Agar frontend tidak error, kita perlu kirim struktur objek yang lengkap
+             // Kita ambil konfigurasi agar tidak undefined di frontend
+             const configsRes = await db.query("SELECT kunci_konfigurasi, nilai FROM konfigurasi_shu");
+             const configs = configsRes.rows.reduce((acc, row) => ({ ...acc, [row.kunci_konfigurasi]: parseFloat(row.nilai) }), {});
+
+             res.status(200).json({
+                isCached: true, 
+                configs: configs, // Penting agar header tidak error
+                saldoLaba: 0, // Dummy (karena data detail ini tidak disimpan di tabel hasil_shu_anggota)
+                distribusi: { anggota: 0, cadangan: 0, danaSosial: 0, pengurus: 0 }, // Dummy
+                rincianAnggota: result.rows.map(row => ({
+                    anggota_id: row.anggota_id,
+                    nama: row.nama,
+                    kode_anggota: row.kode_anggota,
+                    shuTotalSimpanan: parseFloat(row.shu_simpanan),
+                    shuDariPinjaman: parseFloat(row.shu_pinjaman),
+                    shuDariBelanja: parseFloat(row.shu_belanja),
+                    shuPemerataan: parseFloat(row.shu_pemerataan),
+                    shuTotalDiterima: parseFloat(row.total_diterima)
+                }))
+             });
+        } else {
+            // Jika kosong, kirim sinyal bahwa belum ada hitungan
+            res.status(200).json(null); 
+        }
+    } catch (error) {
+        console.error('Error ambil hasil SHU:', error);
+        res.status(500).json({ message: 'Gagal mengambil data' });
+    }
 };

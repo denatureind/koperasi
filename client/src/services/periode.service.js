@@ -1,15 +1,22 @@
-import axios from "axios";
+import http from "../http-common"; // Gunakan settingan pusat agar tidak error CORS
 
-const API_URL = "/api/periode";
+const API_URL = "/periode"; // Cukup /periode karena /api sudah ada di http-common
 
 const PeriodeService = {
-  // Mengambil semua periode akuntansi yang ada
+  // Fungsi Lama (Tetap Ada)
   getAll() {
-    return axios.get(API_URL); // Kita perlu buat endpoint ini di backend
+    return http.get(API_URL);
   },
-  // Menjalankan proses tutup buku
+
+  // --- FUNGSI BARU (YANG HILANG TADI) ---
+  getPeriodeById(id) {
+    return http.get(`${API_URL}/${id}`);
+  },
+  // --------------------------------------
+
+  // Fungsi Lama (Tetap Ada)
   tutupBuku() {
-    return axios.post(`${API_URL}/tutup-buku`);
+    return http.post(`${API_URL}/tutup-buku`);
   },
 };
 

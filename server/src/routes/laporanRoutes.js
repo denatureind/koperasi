@@ -1,5 +1,5 @@
 import express from 'express';
-// Tambahkan dua fungsi baru di sini
+// --- PERUBAHAN 1: Tambahkan simpanJasaBelanja di dalam kurung kurawal ---
 import { 
   getJurnalUmum, 
   getNeraca, 
@@ -8,9 +8,11 @@ import {
   getPeriodeList,
   getBukuBesarSummary,
   getBukuBesarDetail,
-  exportNeraca,  // Tambahkan import untuk exportNeraca
+  exportNeraca,
   exportLabaRugi,
-  exportSHU
+  exportSHU,
+  simpanJasaBelanja,
+  getHasilSHU // <-- Tambahkan import ini
 } from '../controllers/laporanController.js';
 
 const router = express.Router();
@@ -21,14 +23,16 @@ router.get('/neraca', getNeraca);
 router.get('/laba-rugi', getLabaRugi);
 router.get('/hitung-shu', hitungSHU);
 
-// Dua route baru ini sekarang akan berfungsi
 router.get('/buku-besar', getBukuBesarSummary);
 router.get('/buku-besar/detail', getBukuBesarDetail);
 
-// Route baru untuk ekspor laporan Neraca dalam format Excel
-router.get('/neraca/export', exportNeraca); // <-- ROUTE BARU untuk ekspor Neraca
+router.get('/neraca/export', exportNeraca);
 router.get('/laba-rugi/export', exportLabaRugi);
-router.get('/shu/export', exportSHU); // <-- TAMBAHKAN ROUTE BARU INI
+router.get('/shu/export', exportSHU);
+router.get('/shu/hasil-tersimpan', getHasilSHU); // <-- Tambahkan route ini
 
+// --- PERUBAHAN 2: Tambahkan Baris Ini di Paling Bawah (Sebelum export default) ---
+router.post('/shu/simpan-jasa', simpanJasaBelanja); 
+// -------------------------------------------------------------------------------
 
 export default router;

@@ -1,55 +1,73 @@
-import axios from "axios";
+import http from "../http-common"; // <-- PENTING: Pakai konfigurasi pusat kita
 
-const API_URL = "/api/laporan";
+// Cukup "/laporan" saja, karena "/api" sudah ada di http-common.js
+const API_URL = "/laporan";
 
 export default {
   getPeriodeList() {
-    return axios.get(`${API_URL}/periode`);
+    return http.get(`${API_URL}/periode`);
   },
+
   getJurnalUmum(periodeId) {
-    return axios.get(`${API_URL}/jurnal-umum?periode_id=${periodeId}`);
+    return http.get(`${API_URL}/jurnal-umum?periode_id=${periodeId}`);
   },
+
   getNeraca(periodeId) {
-    return axios.get(`${API_URL}/neraca?periode_id=${periodeId}`);
+    return http.get(`${API_URL}/neraca?periode_id=${periodeId}`);
   },
+
   getLabaRugi(periodeId) {
-    return axios.get(`${API_URL}/laba-rugi?periode_id=${periodeId}`);
+    return http.get(`${API_URL}/laba-rugi?periode_id=${periodeId}`);
   },
-  hitungSHU(periodeId, jasaBelanja) {
-    return axios.get(
-      `${API_URL}/hitung-shu?periode_id=${periodeId}&jasa_belanja_dikembalikan=${jasaBelanja}`
-    );
-  },
+
   getBukuBesarSummary(periodeId) {
-    return axios.get(`${API_URL}/buku-besar?periode_id=${periodeId}`);
+    return http.get(`${API_URL}/buku-besar?periode_id=${periodeId}`);
   },
+
   getBukuBesarDetail(akunId, periodeId) {
-    return axios.get(
+    return http.get(
       `${API_URL}/buku-besar/detail?akun_id=${akunId}&periode_id=${periodeId}`
     );
   },
 
-  // --- FUNGSI BARU UNTUK EKSPOR ---
+  // Tambahkan ini
+  getHasilSHUTersimpan(periodeId) {
+    return http.get(`${API_URL}/shu/hasil-tersimpan?periode_id=${periodeId}`);
+  },
+
+  // --- FUNGSI EKSPOR (Blob) ---
   exportNeraca(periodeId) {
-    return axios.get(`${API_URL}/neraca/export?periode_id=${periodeId}`, {
-      responseType: "blob", // Ini penting untuk memberitahu axios agar menangani respon sebagai file
+    return http.get(`${API_URL}/neraca/export?periode_id=${periodeId}`, {
+      responseType: "blob",
     });
   },
 
-  // --- FUNGSI BARU ---
   exportLabaRugi(periodeId) {
-    return axios.get(`${API_URL}/laba-rugi/export?periode_id=${periodeId}`, {
-      responseType: "blob", // Penting untuk unduhan file
+    return http.get(`${API_URL}/laba-rugi/export?periode_id=${periodeId}`, {
+      responseType: "blob",
     });
   },
 
-  // --- FUNGSI BARU ---
   exportSHU(periodeId, jasaBelanja) {
-    return axios.get(
+    return http.get(
       `${API_URL}/shu/export?periode_id=${periodeId}&jasa_belanja_dikembalikan=${jasaBelanja}`,
       {
-        responseType: "blob", // Penting untuk unduhan file
+        responseType: "blob",
       }
+    );
+  },
+
+  // --- FUNGSI SHU BARU (Simpan & Hitung) ---
+
+  // 1. Simpan Jasa Belanja ke Database
+  simpanJasaBelanja(data) {
+    return http.post(`${API_URL}/shu/simpan-jasa`, data);
+  },
+
+  // 2. Hitung SHU (Satu fungsi saja, yang duplikat sudah dihapus)
+  hitungSHU(periodeId, jasaBelanja) {
+    return http.get(
+      `${API_URL}/hitung-shu?periode_id=${periodeId}&jasa_belanja_dikembalikan=${jasaBelanja}`
     );
   },
 };
