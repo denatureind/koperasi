@@ -1,22 +1,31 @@
-import http from "../http-common"; // Gunakan settingan pusat agar tidak error CORS
+import http from "../http-common";
 
-const API_URL = "/periode"; // Cukup /periode karena /api sudah ada di http-common
+const API_URL = "/periode";
 
 const PeriodeService = {
-  // Fungsi Lama (Tetap Ada)
+  // Ambil semua data periode
   getAll() {
     return http.get(API_URL);
   },
 
-  // --- FUNGSI BARU (YANG HILANG TADI) ---
+  // Ambil detail periode per ID
   getPeriodeById(id) {
     return http.get(`${API_URL}/${id}`);
   },
-  // --------------------------------------
 
-  // Fungsi Lama (Tetap Ada)
-  tutupBuku() {
-    return http.post(`${API_URL}/tutup-buku`);
+  // Tambah periode baru
+  create(data) {
+    return http.post(API_URL, data);
+  },
+
+  // Tutup buku periode
+  tutupBuku(id) {
+    return http.post(`${API_URL}/${id}/tutup-buku`);
+  },
+
+  // Posting / distribusi SHU
+  postingDistribusiSHU(periode_id) {
+    return http.post(`${API_URL}/distribusi-shu`, { periode_id });
   },
 };
 

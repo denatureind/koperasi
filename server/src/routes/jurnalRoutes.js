@@ -1,9 +1,13 @@
 import express from 'express';
-import { createJurnalManual } from '../controllers/jurnalController.js';
+// Pastikan deleteJurnal diimport
+import { createJurnalManual, deleteJurnal } from '../controllers/jurnalController.js'; 
 
 const router = express.Router();
 
-// URL: POST /api/jurnal/manual
 router.post('/manual', createJurnalManual);
+
+// --- TAMBAHAN ROUTE DELETE ---
+router.delete('/:id', deleteJurnal);
+// -----------------------------
 
 export default router;

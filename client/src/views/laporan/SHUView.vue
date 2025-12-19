@@ -2,7 +2,6 @@
   <div
     class="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 min-h-[calc(100vh-12rem)]"
   >
-    <!-- Header Halaman -->
     <div
       class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-gray-200"
     >
@@ -15,16 +14,41 @@
           Kalkulator untuk menghitung dan mengalokasikan SHU periode berjalan.
         </p>
       </div>
-      <!-- Tombol Ekspor -->
+
       <div class="flex items-center gap-3">
         <button
+          v-if="shuData"
+          @click="handlePostingSHU"
+          :disabled="isPosting || isDistributed"
+          :class="[
+            'flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all shadow-sm',
+            isDistributed
+              ? 'bg-gray-400 text-white cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-md',
+          ]"
+        >
+          <i v-if="isPosting" class="fas fa-spinner fa-spin"></i>
+          <i v-else-if="isDistributed" class="fas fa-check-circle"></i>
+          <i v-else class="fas fa-paper-plane"></i>
+
+          <span>{{
+            isPosting
+              ? "Memproses..."
+              : isDistributed
+              ? "Sudah Dibagi"
+              : "Bagikan SHU"
+          }}</span>
+        </button>
+
+        <button
           @click="exportToExcel"
-          :disabled="!shuData"
+          :disabled="!shuData || isPosting"
           class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <i class="fas fa-file-excel"></i>
           <span>Ekspor Excel</span>
         </button>
+
         <div
           class="bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100"
         >
@@ -35,7 +59,6 @@
       </div>
     </div>
 
-    <!-- Input Jasa Belanja -->
     <div
       class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8"
     >
@@ -63,7 +86,7 @@
           </div>
           <button
             @click="fetchSHU"
-            :disabled="isLoading"
+            :disabled="isLoading || isPosting"
             class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md disabled:opacity-70 disabled:cursor-not-allowed w-full md:w-auto"
           >
             <div class="flex items-center gap-2 justify-center">
@@ -77,9 +100,7 @@
       </div>
     </div>
 
-    <!-- Tampilan Hasil SHU -->
     <div v-if="shuData" class="space-y-6">
-      <!-- KARTU RINCIAN ALOKASI -->
       <div
         class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
       >
@@ -100,7 +121,7 @@
               <div>
                 <div class="font-medium">Untuk Anggota</div>
                 <div class="text-sm text-gray-500">
-                  {{ shuData.configs.distribusi_anggota_persen }}%
+                  {{ shuData.configs.shu_anggota }}%
                 </div>
               </div>
               <div class="font-bold text-green-700">
@@ -113,7 +134,7 @@
               <div>
                 <div class="font-medium">Untuk Cadangan</div>
                 <div class="text-sm text-gray-500">
-                  {{ shuData.configs.distribusi_cadangan_persen }}%
+                  {{ shuData.configs.shu_cadangan }}%
                 </div>
               </div>
               <div class="font-bold text-blue-700">
@@ -126,7 +147,7 @@
               <div>
                 <div class="font-medium">Untuk Dana Sosial</div>
                 <div class="text-sm text-gray-500">
-                  {{ shuData.configs.distribusi_sosial_persen }}%
+                  {{ shuData.configs.shu_sosial }}%
                 </div>
               </div>
               <div class="font-bold text-purple-700">
@@ -139,7 +160,7 @@
               <div>
                 <div class="font-medium">Untuk Pengurus</div>
                 <div class="text-sm text-gray-500">
-                  {{ shuData.configs.distribusi_pengurus_persen }}%
+                  {{ shuData.configs.shu_pengurus }}%
                 </div>
               </div>
               <div class="font-bold text-amber-700">
@@ -150,7 +171,6 @@
         </div>
       </div>
 
-      <!-- Tabel Rincian Anggota -->
       <div
         class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
       >
@@ -285,10 +305,12 @@ import { useToast } from "vue-toastification";
 
 const shuData = ref(null);
 const isLoading = ref(false);
+const isPosting = ref(false); // STATE BARU UNTUK LOADING POSTING
 const laporanStore = useLaporanStore();
 const toast = useToast();
 const jasaBelanjaInput = ref(0);
 const sortOrder = ref("asc");
+const isDistributed = ref(false); // Penanda status dari DB
 
 const currentPeriodName = computed(() => {
   if (!laporanStore.periodeAktifId || !laporanStore.periodeList.length)
@@ -299,29 +321,21 @@ const currentPeriodName = computed(() => {
   return period ? period.nama_periode : "Belum dipilih";
 });
 
-// --- PERBAIKAN: FUNGSI DIDEFINISIKAN DULU (PINDAH KE ATAS) ---
 const loadSavedJasaBelanja = async (periodeId) => {
   try {
-    // 1. Cek Input Jasa Belanja (Inputan kecil)
     const resPeriode = await PeriodeService.getPeriodeById(periodeId);
     if (resPeriode.data) {
       jasaBelanjaInput.value =
         parseFloat(resPeriode.data.total_jasa_belanja) || 0;
+
+      // TAMBAHAN: Cek status distribusi dari database
+      isDistributed.value = resPeriode.data.is_distributed || false;
     }
 
-    // 2. Cek Hasil Tabel SHU (Laporan Besar) - INI YANG BARU
     const resHasil = await LaporanService.getHasilSHUTersimpan(periodeId);
     if (resHasil.data && resHasil.data.isCached) {
-      // Jika ada data tersimpan, langsung tampilkan tabelnya!
       shuData.value = resHasil.data;
-
-      // PENTING: Karena backend getHasilSHU tadi saya buat versi ringkas (hanya rincianAnggota),
-      // pastikan struktur objek shuData sesuai template Anda.
-      // Jika template Anda butuh data 'saldoLaba', 'distribusi', dll untuk ditampilkan di kartu atas,
-      // maka data itu harus ikut dikirim dari backend getHasilSHU (Langkah 2A).
-      // Untuk sekarang, tabel anggota akan muncul.
     } else {
-      // Jika belum ada hitungan, kosongkan tabel
       shuData.value = null;
     }
   } catch (error) {
@@ -329,7 +343,6 @@ const loadSavedJasaBelanja = async (periodeId) => {
   }
 };
 
-// --- BARU SETELAHNYA DI-WATCH (PINDAH KE BAWAH) ---
 watch(
   () => laporanStore.periodeAktifId,
   async (newId) => {
@@ -340,7 +353,7 @@ watch(
       shuData.value = null;
     }
   },
-  { immediate: true } // Karena immediate true, dia butuh fungsi di atas sudah siap
+  { immediate: true }
 );
 
 // FUNGSI SORTIR
@@ -394,7 +407,7 @@ const totals = computed(() => {
   );
 });
 
-// HITUNG SHU (SIMPAN DULU BARU HITUNG)
+// HITUNG SHU
 const fetchSHU = async () => {
   if (!laporanStore.periodeAktifId) {
     toast.error("Silakan pilih periode laporan terlebih dahulu.");
@@ -428,6 +441,34 @@ const fetchSHU = async () => {
     isLoading.value = false;
   }
 };
+
+// --- FUNGSI BARU: POSTING SHU ---
+const handlePostingSHU = async () => {
+  if (
+    !confirm(
+      "PERINGATAN: \n\n1. Anda yakin ingin membagikan SHU ini secara TUNAI?\n2. Kas Koperasi akan BERKURANG.\n3. Aksi ini FINAL (Tidak bisa diulang).\n\nLanjutkan?"
+    )
+  ) {
+    return;
+  }
+
+  isPosting.value = true;
+  try {
+    const response = await PeriodeService.postingDistribusiSHU(
+      laporanStore.periodeAktifId
+    );
+    toast.success(response.data.message);
+
+    // Update status lokal biar tombol terkunci
+    isDistributed.value = true;
+  } catch (error) {
+    console.error(error);
+    toast.error(error.response?.data?.message || "Gagal membagikan SHU.");
+  } finally {
+    isPosting.value = false;
+  }
+};
+// --------------------------------
 
 const exportToExcel = async () => {
   if (!shuData.value) {

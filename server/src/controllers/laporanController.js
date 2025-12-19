@@ -3,7 +3,6 @@ import ExcelJS from 'exceljs';
 
 /**
  * FUNGSI PENTING: Mengambil daftar periode untuk dropdown
- * Mengambil semua periode akuntansi dari database dan mengurutkannya dari yang terbaru.
  */
 export const getPeriodeList = async (req, res) => {
     try {
@@ -17,30 +16,87 @@ export const getPeriodeList = async (req, res) => {
 
 /**
  * Mengambil Jurnal Umum berdasarkan periode
- * Mengambil semua entri jurnal umum untuk periode yang ditentukan,
- * termasuk detail akun yang relevan.
  */
 export const getJurnalUmum = async (req, res) => {
-    const { periode_id } = req.query;
+    const { periode_id, page = 1, limit = 10, startDate, endDate, search } = req.query;
+    
     if (!periode_id) return res.status(400).json({ message: 'ID Periode dibutuhkan' });
+
+    const offset = (page - 1) * limit;
+
     try {
-        const query = `
+        // --- 1. MEMBANGUN FILTER DINAMIS ---
+        let filterClause = '';
+        let queryParams = [periode_id, limit, offset]; // $1, $2, $3 sudah dipake
+        let paramCounter = 4; // Mulai dari $4
+
+        // Filter Tanggal
+        if (startDate && endDate) {
+            filterClause += ` AND j.tgl_transaksi BETWEEN $${paramCounter} AND $${paramCounter + 1}`;
+            queryParams.push(startDate, endDate);
+            paramCounter += 2;
+        }
+
+        // Filter Pencarian (Search)
+        if (search) {
+            // Mencari di Keterangan ATAU Nama Akun ATAU Kode Akun
+            filterClause += ` AND (j.keterangan ILIKE $${paramCounter} OR k.nama_akun ILIKE $${paramCounter} OR k.kode ILIKE $${paramCounter})`;
+            queryParams.push(`%${search}%`); // Tambahkan % untuk wildcard SQL
+            paramCounter += 1;
+        }
+
+        // --- 2. QUERY AMBIL DATA ---
+        const dataQuery = `
             SELECT j.id, j.tgl_transaksi, j.keterangan, j.debit, j.kredit, k.kode AS kode_akun, k.nama_akun 
             FROM jurnal_umum j JOIN kode_akun k ON j.akun_id = k.id
-            WHERE j.periode_id = $1 ORDER BY j.tgl_transaksi DESC, j.id DESC;
+            WHERE j.periode_id = $1 ${filterClause}
+            ORDER BY j.tgl_transaksi DESC, j.id DESC
+            LIMIT $2 OFFSET $3;
         `;
-        const result = await db.query(query, [periode_id]);
-        res.status(200).json(result.rows);
+
+        // --- 3. QUERY HITUNG TOTAL (Untuk Paginasi) ---
+        // Kita butuh param yang sama TAPI tanpa limit & offset
+        // Parameternya: [periode_id, startDate, endDate, search] (urutan harus sama logic-nya)
+        let countParams = [periode_id];
+        let countClause = '';
+        let countCounter = 2;
+
+        if (startDate && endDate) {
+            countClause += ` AND j.tgl_transaksi BETWEEN $${countCounter} AND $${countCounter + 1}`;
+            countParams.push(startDate, endDate);
+            countCounter += 2;
+        }
+
+        if (search) {
+            countClause += ` AND (j.keterangan ILIKE $${countCounter} OR k.nama_akun ILIKE $${countCounter} OR k.kode ILIKE $${countCounter})`;
+            countParams.push(`%${search}%`);
+            countCounter += 1;
+        }
+
+        const countQuery = `
+            SELECT COUNT(*) as total 
+            FROM jurnal_umum j 
+            JOIN kode_akun k ON j.akun_id = k.id
+            WHERE j.periode_id = $1 ${countClause};
+        `;
+
+        const dataResult = await db.query(dataQuery, queryParams);
+        const countResult = await db.query(countQuery, countParams);
+
+        res.status(200).json({
+            data: dataResult.rows,
+            total: parseInt(countResult.rows[0].total),
+            page: parseInt(page),
+            limit: parseInt(limit)
+        });
+
     } catch (error) {
         console.error('Error saat mengambil jurnal umum:', error);
         res.status(500).json({ message: 'Terjadi kesalahan pada server' });
     }
 };
-
 /**
  * Fungsi untuk membuat laporan Neraca
- * Menghitung saldo akhir untuk setiap akun dan mengelompokkannya ke dalam
- * Aset, Kewajiban, dan Modal. Laba/Rugi ditambahkan ke Modal agar neraca seimbang.
  */
 export const getNeraca = async (req, res) => {
     const { periode_id } = req.query;
@@ -79,13 +135,13 @@ export const getNeraca = async (req, res) => {
             else if (akun.header_akun === 'BEBAN') { totalBeban += saldoAkhir; }
         });
 
-        // --- LOGIKA PENTING: Menambahkan Laba/Rugi ke Modal agar Neraca Seimbang ---
+        // Menambahkan Laba/Rugi ke Modal
         const labaRugiPeriodeIni = totalPendapatan - totalBeban;
         laporan.modal.push({ kode: '', nama_akun: 'Laba/Rugi Periode Ini', saldo: labaRugiPeriodeIni });
 
         laporan.totalAset = totalAset;
         laporan.totalKewajiban = totalKewajiban;
-        laporan.totalModal = totalModal + labaRugiPeriodeIni; // Tambahkan laba/rugi ke total modal
+        laporan.totalModal = totalModal + labaRugiPeriodeIni; 
         laporan.totalKewajibanDanModal = laporan.totalKewajiban + laporan.totalModal;
 
         res.status(200).json(laporan);
@@ -98,13 +154,14 @@ export const getNeraca = async (req, res) => {
 
 /**
  * Fungsi untuk membuat laporan Laba Rugi
- * Menghitung total pendapatan dan beban untuk periode yang ditentukan.
  */
 export const getLabaRugi = async (req, res) => {
     const { periode_id } = req.query;
     if (!periode_id) return res.status(400).json({ message: 'ID Periode dibutuhkan' });
 
     try {
+        // QUERY: Mengambil semua akun Pendapatan/Beban/Biaya
+        // Kita gunakan ILIKE agar fleksibel (tidak peduli huruf besar/kecil)
         const query = `
             SELECT 
                 k.header_akun, k.nama_akun, k.posisi_saldo,
@@ -112,25 +169,38 @@ export const getLabaRugi = async (req, res) => {
                 COALESCE(SUM(j.kredit), 0) AS total_kredit
             FROM kode_akun k
             LEFT JOIN jurnal_umum j ON k.id = j.akun_id AND j.periode_id = $1
-            WHERE k.header_akun IN ('PENDAPATAN', 'BEBAN')
+            WHERE 
+                k.header_akun ILIKE '%PENDAPATAN%' OR 
+                k.header_akun ILIKE '%BEBAN%' OR 
+                k.header_akun ILIKE '%BIAYA%'
             GROUP BY k.id, k.header_akun, k.nama_akun, k.posisi_saldo;
         `;
         const result = await db.query(query, [periode_id]);
 
         const laporan = { pendapatan: [], beban: [], totalPendapatan: 0, totalBeban: 0, labaRugi: 0 };
+        
         result.rows.forEach(akun => {
+            // 1. Hitung Saldo Akhir
             let saldo = (akun.posisi_saldo === 'debit')
                 ? parseFloat(akun.total_debit) - parseFloat(akun.total_kredit)
                 : parseFloat(akun.total_kredit) - parseFloat(akun.total_debit);
 
-            if (akun.header_akun === 'PENDAPATAN') {
+            // 2. FILTER PENTING: Jika saldo 0, lewati (jangan dimasukkan ke laporan)
+            if (saldo === 0) return; 
+
+            const header = akun.header_akun.toUpperCase();
+
+            // 3. Masukkan ke kategori yang sesuai
+            if (header.includes('PENDAPATAN')) {
                 laporan.pendapatan.push({ nama_akun: akun.nama_akun, total: saldo });
                 laporan.totalPendapatan += saldo;
-            } else if (akun.header_akun === 'BEBAN') {
+            } 
+            else if (header.includes('BEBAN') || header.includes('BIAYA')) {
                 laporan.beban.push({ nama_akun: akun.nama_akun, total: saldo });
                 laporan.totalBeban += saldo;
             }
         });
+
         laporan.labaRugi = laporan.totalPendapatan - laporan.totalBeban;
         res.status(200).json(laporan);
     } catch (error) {
@@ -141,10 +211,7 @@ export const getLabaRugi = async (req, res) => {
 
 
 // =================================================================
-// FUNGSI hitungSHU DENGAN PENAMBAHAN SHU PEMERATAAN
-// =================================================================
-// =================================================================
-// FUNGSI hitungSHU (FINAL: DENGAN PENYIMPANAN KE DATABASE)
+// FUNGSI hitungSHU (DIPERBAIKI: Key & Logika)
 // =================================================================
 export const hitungSHU = async (req, res) => {
     const { periode_id, jasa_belanja_dikembalikan } = req.query;
@@ -153,7 +220,6 @@ export const hitungSHU = async (req, res) => {
         return res.status(400).json({ message: "ID Periode dibutuhkan" });
     }
     
-    // Gunakan client untuk transaksi (BEGIN/COMMIT/ROLLBACK)
     const client = await db.connect();
 
     try {
@@ -170,13 +236,22 @@ export const hitungSHU = async (req, res) => {
         const { tgl_mulai, tgl_selesai } = periodeResult.rows[0];
         const tahun = new Date(tgl_mulai).getFullYear();
 
-        // 2. Ambil Konfigurasi SHU
+        // 2. Ambil Konfigurasi SHU (PERBAIKAN: Gunakan kolom 'key')
         const configs = (
-            await client.query("SELECT kunci_konfigurasi, nilai FROM konfigurasi_shu")
+            await client.query("SELECT key, nilai FROM konfigurasi_shu")
         ).rows.reduce(
-            (acc, row) => ({ ...acc, [row.kunci_konfigurasi]: parseFloat(row.nilai) }),
+            (acc, row) => ({ ...acc, [row.key]: parseFloat(row.nilai) }),
             {}
         );
+
+        // -- MAPPING DATA KONFIGURASI (Agar sesuai dengan Database Baru) --
+        // Database key: shu_anggota, shu_cadangan, shu_pengurus, dll
+        const persenAnggota = configs.shu_anggota || 0;
+        const persenCadangan = configs.shu_cadangan || 0;
+        const persenPengurus = configs.shu_pengurus || 0;
+        const persenSosial = configs.shu_sosial || 0; 
+        const persenJasaPeminjam = configs.shu_jasa_pinjaman || 0; // Default 0 jika belum diset
+        const hargaPoinBelanja = configs.harga_poin_belanja || 10000; // Default 10rb jika belum diset
 
         // 3. Hitung SHU Kotor (Pendapatan - Beban)
         const labaRugiResult = await client.query(
@@ -194,24 +269,28 @@ export const hitungSHU = async (req, res) => {
         const shuKotor = totalPendapatan - totalBeban;
 
         // 4. Hitung Alokasi Dasar
+        // Hitung dulu jatah untuk peminjam (jika ada aturannya)
         const jasaResult = await client.query(
             `SELECT COALESCE(SUM(kredit) - SUM(debit), 0) as total FROM jurnal_umum WHERE akun_id = 41 AND periode_id = $1;`,
             [periode_id]
         );
         const totalJasaPinjaman = parseFloat(jasaResult.rows[0].total);
-        const alokasiUntukPeminjam = totalJasaPinjaman * (configs.alokasi_jasa_peminjam_persen / 100);
+        const alokasiUntukPeminjam = totalJasaPinjaman * (persenJasaPeminjam / 100);
+        
+        // Sisa SHU untuk dibagikan
         const saldoLaba = shuKotor - alokasiUntukPeminjam;
 
-        const danaUntukAnggotaViaSimpanan = saldoLaba * (configs.distribusi_anggota_persen / 100);
+        // Hitung nominal distribusi
+        const danaUntukAnggotaViaSimpanan = saldoLaba * (persenAnggota / 100);
 
         const distribusi = {
             anggota: danaUntukAnggotaViaSimpanan,
-            cadangan: saldoLaba * (configs.distribusi_cadangan_persen / 100),
-            danaSosial: saldoLaba * (configs.distribusi_sosial_persen / 100),
-            pengurus: saldoLaba * (configs.distribusi_pengurus_persen / 100),
+            cadangan: saldoLaba * (persenCadangan / 100),
+            danaSosial: saldoLaba * (persenSosial / 100),
+            pengurus: saldoLaba * (persenPengurus / 100),
         };
         
-        // 5. Ambil Data Pendukung (Pemerataan, Total Jasa, Total Belanja)
+        // 5. Ambil Data Pendukung
         const pemerataanRes = await client.query('SELECT anggota_id, jumlah FROM shu_pemerataan WHERE periode_id = $1', [periode_id]);
         const pemerataanMap = pemerataanRes.rows.reduce((map, row) => {
             map[row.anggota_id] = parseFloat(row.jumlah);
@@ -269,7 +348,7 @@ export const hitungSHU = async (req, res) => {
             // --- C. Hitung SHU Belanja ---
             const belanjaPribadiResult = await client.query(`SELECT COALESCE(SUM(total_belanja), 0) as total FROM belanja_anggota WHERE anggota_id = $1 AND periode_id = $2`, [anggota.id, periode_id]);
             const belanjaPribadi = parseFloat(belanjaPribadiResult.rows[0].total || 0);
-            const poinBelanja = belanjaPribadi / configs.harga_poin_belanja;
+            const poinBelanja = belanjaPribadi / hargaPoinBelanja; // Gunakan variabel mapping
             const shuDariBelanja = (belanjaPribadi / totalBelanjaSemuaAnggota) * parseFloat(jasa_belanja_dikembalikan || 0);            
             
             // --- D. Ambil SHU Pemerataan ---
@@ -310,14 +389,9 @@ export const hitungSHU = async (req, res) => {
             };
         });
 
-        // =================================================================
-        // BAGIAN BARU: SIMPAN HASIL PERHITUNGAN KE DATABASE (PERSISTENCE)
-        // =================================================================
-        
-        // A. Hapus hasil perhitungan lama (jika ada) untuk periode ini agar tidak duplikat
+        // 8. Simpan Hasil
         await client.query("DELETE FROM hasil_shu_anggota WHERE periode_id = $1", [periode_id]);
 
-        // B. Simpan hasil perhitungan baru
         for (const hasil of rincianAnggota) {
             await client.query(`
                 INSERT INTO hasil_shu_anggota 
@@ -333,7 +407,6 @@ export const hitungSHU = async (req, res) => {
                 hasil.shuTotalDiterima
             ]);
         }
-        // =================================================================
 
         await client.query("COMMIT");
 
@@ -356,7 +429,7 @@ export const hitungSHU = async (req, res) => {
         client.release();
     }
 };
-// Fungsi ini tidak diubah, tetap sama seperti milik Anda
+
 export const getBukuBesarSummary = async (req, res) => {
     const { periode_id } = req.query;
     if (!periode_id) return res.status(400).json({ message: 'ID Periode dibutuhkan' });
@@ -387,7 +460,6 @@ export const getBukuBesarSummary = async (req, res) => {
     }
 };
 
-// Fungsi ini tidak diubah, tetap sama seperti milik Anda
 export const getBukuBesarDetail = async (req, res) => {
     const { akun_id, periode_id } = req.query;
     if (!akun_id || !periode_id) return res.status(400).json({ message: 'ID Akun dan ID Periode dibutuhkan' });
@@ -414,7 +486,6 @@ export const getBukuBesarDetail = async (req, res) => {
     }
 };
 
-// Fungsi ini tidak diubah, tetap sama seperti milik Anda
 export const exportNeraca = async (req, res) => {
   const { periode_id } = req.query;
   if (!periode_id) return res.status(400).json({ message: 'ID Periode dibutuhkan' });
@@ -498,7 +569,6 @@ export const exportNeraca = async (req, res) => {
   }
 };
 
-// Fungsi ini tidak diubah, tetap sama seperti milik Anda
 export const exportLabaRugi = async (req, res) => {
   const { periode_id } = req.query;
   if (!periode_id) return res.status(400).json({ message: 'ID Periode dibutuhkan' });
@@ -564,20 +634,13 @@ export const exportLabaRugi = async (req, res) => {
   }
 };
 
-    // ... (kode-kode fungsi yang sudah ada di atasnya)
-
-    /**
-     * FUNGSI BARU: Mengekspor Laporan SHU ke format Excel
-     * Mengambil data SHU yang sudah dihitung dan menyusunnya dalam file .xlsx
-     */
-    export const exportSHU = async (req, res) => {
+export const exportSHU = async (req, res) => {
   const { periode_id, jasa_belanja_dikembalikan } = req.query;
   if (!periode_id) {
     return res.status(400).json({ message: 'ID Periode dibutuhkan' });
   }
 
   try {
-    // Kita "meminjam" response dari fungsi hitungSHU yang sudah ada
     let shuData;
     const mockReq = { query: { periode_id, jasa_belanja_dikembalikan: jasa_belanja_dikembalikan || 0 } };
     const mockRes = {
@@ -590,20 +653,16 @@ export const exportLabaRugi = async (req, res) => {
       throw new Error("Gagal mendapatkan data SHU untuk diekspor.");
     }
 
-    // --- PERBAIKAN DI SINI ---
-    // Urutkan data berdasarkan nama anggota (A-Z) sebelum dimasukkan ke Excel
     shuData.rincianAnggota.sort((a, b) => a.nama.localeCompare(b.nama));
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Laporan SHU');
 
-    // Judul Laporan
     worksheet.addRow(['Laporan Sisa Hasil Usaha (SHU)']).font = { bold: true, size: 16 };
-    worksheet.mergeCells('A1:G1'); // Diperbarui menjadi G1
+    worksheet.mergeCells('A1:G1');
     worksheet.getCell('A1').alignment = { horizontal: 'center' };
-    worksheet.addRow([]); // Baris kosong
+    worksheet.addRow([]);
 
-    // Header Tabel
     const headerRow = worksheet.addRow([
       'Kode Anggota',
       'Nama Anggota',
@@ -625,7 +684,6 @@ export const exportLabaRugi = async (req, res) => {
       };
     });
 
-    // Isi Data Anggota (sekarang sudah terurut)
     shuData.rincianAnggota.forEach(anggota => {
       const row = worksheet.addRow([
         anggota.kode_anggota,
@@ -643,7 +701,6 @@ export const exportLabaRugi = async (req, res) => {
       row.getCell(7).numFmt = '"Rp "#,##0';
     });
 
-    // Baris Total
     worksheet.addRow([]);
     const totals = shuData.rincianAnggota.reduce((acc, item) => {
         acc.shuSimpanan += item.shuTotalSimpanan || 0;
@@ -668,7 +725,6 @@ export const exportLabaRugi = async (req, res) => {
         totalRow.getCell(i).numFmt = '"Rp "#,##0';
     }
 
-    // Atur lebar kolom
     worksheet.getColumn('A').width = 15;
     worksheet.getColumn('B').width = 30;
     worksheet.getColumn('C').width = 20;
@@ -677,7 +733,6 @@ export const exportLabaRugi = async (req, res) => {
     worksheet.getColumn('F').width = 20;
     worksheet.getColumn('G').width = 20;
 
-    // Kirim file ke browser
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="Laporan_SHU.xlsx"');
     await workbook.xlsx.write(res);
@@ -687,11 +742,8 @@ export const exportLabaRugi = async (req, res) => {
     console.error("Error saat ekspor SHU:", error);
     res.status(500).json({ message: "Gagal mengekspor laporan SHU." });
   }
-
-  
 };
 
-// --- TAMBAHAN BARU: Simpan Jasa Belanja ---
 export const simpanJasaBelanja = async (req, res) => {
     const { periode_id, total_jasa_belanja } = req.body;
 
@@ -719,46 +771,81 @@ export const simpanJasaBelanja = async (req, res) => {
     }
 };
 
-// --- FUNGSI BARU: Mengambil SHU yang sudah tersimpan permanen ---
 export const getHasilSHU = async (req, res) => {
     const { periode_id } = req.query;
     try {
-        // Cek apakah ada data di tabel hasil_shu_anggota
-        const query = `
+        const queryMembers = `
             SELECT h.*, a.nama, a.kode_anggota 
             FROM hasil_shu_anggota h
             JOIN anggota a ON h.anggota_id = a.id
             WHERE h.periode_id = $1
             ORDER BY a.nama ASC;
         `;
-        const result = await db.query(query, [periode_id]);
+        const resultMembers = await db.query(queryMembers, [periode_id]);
 
-        if (result.rows.length > 0) {
-             // Agar frontend tidak error, kita perlu kirim struktur objek yang lengkap
-             // Kita ambil konfigurasi agar tidak undefined di frontend
-             const configsRes = await db.query("SELECT kunci_konfigurasi, nilai FROM konfigurasi_shu");
-             const configs = configsRes.rows.reduce((acc, row) => ({ ...acc, [row.kunci_konfigurasi]: parseFloat(row.nilai) }), {});
-
-             res.status(200).json({
-                isCached: true, 
-                configs: configs, // Penting agar header tidak error
-                saldoLaba: 0, // Dummy (karena data detail ini tidak disimpan di tabel hasil_shu_anggota)
-                distribusi: { anggota: 0, cadangan: 0, danaSosial: 0, pengurus: 0 }, // Dummy
-                rincianAnggota: result.rows.map(row => ({
-                    anggota_id: row.anggota_id,
-                    nama: row.nama,
-                    kode_anggota: row.kode_anggota,
-                    shuTotalSimpanan: parseFloat(row.shu_simpanan),
-                    shuDariPinjaman: parseFloat(row.shu_pinjaman),
-                    shuDariBelanja: parseFloat(row.shu_belanja),
-                    shuPemerataan: parseFloat(row.shu_pemerataan),
-                    shuTotalDiterima: parseFloat(row.total_diterima)
-                }))
-             });
-        } else {
-            // Jika kosong, kirim sinyal bahwa belum ada hitungan
-            res.status(200).json(null); 
+        if (resultMembers.rows.length === 0) {
+            return res.status(200).json(null); 
         }
+        
+        // PERBAIKAN: Gunakan kolom 'key'
+        const configsRes = await db.query("SELECT key, nilai FROM konfigurasi_shu");
+        const configs = configsRes.rows.reduce((acc, row) => ({ ...acc, [row.key]: parseFloat(row.nilai) }), {});
+
+        // -- MAPPING DATA AGAR TIDAK NAN --
+        const persenAnggota = configs.shu_anggota || 0;
+        const persenCadangan = configs.shu_cadangan || 0;
+        const persenPengurus = configs.shu_pengurus || 0;
+        const persenSosial = configs.shu_sosial || 0;
+        const persenJasaPeminjam = configs.shu_jasa_pinjaman || 0;
+
+        const labaRugiResult = await db.query(
+            `SELECT k.header_akun, SUM(j.kredit) - SUM(j.debit) as saldo 
+             FROM jurnal_umum j JOIN kode_akun k ON j.akun_id = k.id 
+             WHERE (k.header_akun = 'PENDAPATAN' OR k.header_akun = 'BEBAN') 
+             AND j.periode_id = $1 GROUP BY k.header_akun;`,
+            [periode_id]
+        );
+        
+        let totalPendapatan = 0, totalBeban = 0;
+        labaRugiResult.rows.forEach((row) => {
+            if (row.header_akun === "PENDAPATAN") totalPendapatan = parseFloat(row.saldo) || 0;
+            if (row.header_akun === "BEBAN") totalBeban = parseFloat(row.saldo) * -1 || 0;
+        });
+        const shuKotor = totalPendapatan - totalBeban;
+
+        const jasaResult = await db.query(
+            `SELECT COALESCE(SUM(kredit) - SUM(debit), 0) as total FROM jurnal_umum WHERE akun_id = 41 AND periode_id = $1;`,
+            [periode_id]
+        );
+        const totalJasaPinjaman = parseFloat(jasaResult.rows[0].total);
+        const alokasiUntukPeminjam = totalJasaPinjaman * (persenJasaPeminjam / 100);
+        
+        const saldoLaba = shuKotor - alokasiUntukPeminjam;
+
+        const distribusi = {
+            anggota: saldoLaba * (persenAnggota / 100),
+            cadangan: saldoLaba * (persenCadangan / 100),
+            danaSosial: saldoLaba * (persenSosial / 100),
+            pengurus: saldoLaba * (persenPengurus / 100),
+        };
+
+        res.status(200).json({
+            isCached: true,
+            configs: configs,
+            saldoLaba: saldoLaba, 
+            distribusi: distribusi, 
+            rincianAnggota: resultMembers.rows.map(row => ({
+                anggota_id: row.anggota_id,
+                nama: row.nama,
+                kode_anggota: row.kode_anggota,
+                shuTotalSimpanan: parseFloat(row.shu_simpanan),
+                shuDariPinjaman: parseFloat(row.shu_pinjaman),
+                shuDariBelanja: parseFloat(row.shu_belanja),
+                shuPemerataan: parseFloat(row.shu_pemerataan),
+                shuTotalDiterima: parseFloat(row.total_diterima)
+            }))
+        });
+
     } catch (error) {
         console.error('Error ambil hasil SHU:', error);
         res.status(500).json({ message: 'Gagal mengambil data' });

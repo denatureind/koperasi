@@ -8,8 +8,26 @@ export default {
     return http.get(`${API_URL}/periode`);
   },
 
-  getJurnalUmum(periodeId) {
-    return http.get(`${API_URL}/jurnal-umum?periode_id=${periodeId}`);
+  // Update fungsi ini
+  getJurnalUmum(
+    periodeId,
+    page = 1,
+    limit = 10,
+    startDate = "",
+    endDate = "",
+    search = ""
+  ) {
+    let url = `${API_URL}/jurnal-umum?periode_id=${periodeId}&page=${page}&limit=${limit}`;
+
+    if (startDate && endDate) {
+      url += `&startDate=${startDate}&endDate=${endDate}`;
+    }
+
+    if (search) {
+      url += `&search=${encodeURIComponent(search)}`;
+    }
+
+    return http.get(url);
   },
 
   getNeraca(periodeId) {
